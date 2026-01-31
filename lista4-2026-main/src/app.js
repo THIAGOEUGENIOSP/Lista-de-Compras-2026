@@ -628,10 +628,86 @@ function bindDelegatedEvents() {
         if (!cell) return;
         if (cell.querySelector("input")) return;
 
+        const inline =
+          el.dataset.inline === "true" ||
+          el.classList.contains("mobile-edit-cell") ||
+          el.closest(".mobile-list");
+
         const currentValue =
           field === "quantidade"
             ? formatQuantidade(it.quantidade ?? 0, it.categoria)
             : num(it.valor_unitario || 0);
+
+        if (inline) {
+          cell.innerHTML = `
+            <input
+              class="input cell-input"
+              type="text"
+              inputmode="decimal"
+              placeholder="${field === "quantidade" ? "Ex: 1kg ou 0.5g" : "0,00"}"
+              value="${currentValue}"
+            />
+          `;
+
+          const inp = cell.querySelector("input");
+          let committed = false;
+
+          const saveInline = async () => {
+            if (committed) return;
+            committed = true;
+
+            const raw = String(inp?.value ?? "").trim();
+            const patch = {};
+
+            if (!raw) {
+              if (field === "quantidade") {
+                patch.quantidade = 0;
+              } else {
+                patch.valor_unitario = 0;
+              }
+            } else if (field === "quantidade") {
+              const qtdParsed = parseQuantidade(raw, it.categoria);
+              if (!qtdParsed) {
+                toast.show({
+                  title: "Validação",
+                  message:
+                    isPesoCategoria(it.categoria)
+                      ? "Quantidade inválida. Use ex: 1kg ou 0.5g."
+                      : "Quantidade inválida. Use apenas números (ex: 2 ou 2,5).",
+                });
+                renderApp();
+                return;
+              }
+              patch.quantidade = qtdParsed.value;
+            } else {
+              patch.valor_unitario = num(raw);
+            }
+
+            const updated = normalizeItem(await updateItem(id, patch));
+            state.items = state.items.map((x) => (x.id === id ? updated : x));
+            renderApp();
+          };
+
+          inp.addEventListener("keydown", (ev) => {
+            if (ev.key === "Enter") {
+              ev.preventDefault();
+              saveInline();
+            }
+            if (ev.key === "Escape") {
+              ev.preventDefault();
+              committed = true;
+              renderApp();
+            }
+          });
+
+          inp.addEventListener("blur", () => {
+            saveInline();
+          });
+
+          inp.focus();
+          inp.select();
+          return;
+        }
 
         cell.innerHTML = `
           <input

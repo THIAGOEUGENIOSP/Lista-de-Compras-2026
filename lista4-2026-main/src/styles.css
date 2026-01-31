@@ -272,7 +272,7 @@ table tbody tr:hover{
   display: none;
 }
 
-@media (max-width: 768px){
+  @media (max-width: 768px){
   .collaborators-table-wrap{
     display: none;
   }
@@ -720,6 +720,16 @@ tr.row-bought .badge{
     height: 32px;
     padding: 0 10px;
     border-radius: 8px;
+  }
+  .pill.mobile-edit-cell{
+    cursor: text;
+  }
+  .pill.mobile-edit-cell .cell-input{
+    width: 100%;
+    min-width: 72px;
+    padding: 4px 6px;
+    border: none;
+    background: transparent;
   }
   /* valor do preço */
   .pill .pvalue{

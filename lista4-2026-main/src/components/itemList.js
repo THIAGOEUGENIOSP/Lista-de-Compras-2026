@@ -1,295 +1,340 @@
 // src/components/itemList.js
-import { brl } from "../utils/format.js";
+import { brl, formatQuantidade, isPesoCategoria } from "../utils/format.js";
+
 function collabName(it) {
- return String(it?.criado_por_nome || it?.criado_por || "—").trim() || "—";
+  return (
+    it?.criado_por_nome ||
+    it?.criado_por ||
+    it?.colaborador ||
+    it?.usuario_nome ||
+    "—"
+  );
 }
-function fmtMoney(n) {
- const v = Number(n || 0);
- return `R$ ${v.toFixed(2).replace(".", ",")}`;
+
+function isChurrasco(it) {
+  return isPesoCategoria(it?.categoria);
 }
-function fmtQtyTotal(n) {
- const v = Number(n || 0);
- const hasDecimal = Math.abs(v % 1) > 0.000001;
- return v.toLocaleString("pt-BR", {
-   minimumFractionDigits: hasDecimal ? 2 : 0,
-   maximumFractionDigits: 2,
- });
+
+function totalOfItem(it) {
+  const qtd = Number(it?.quantidade || 0);
+  const unit = Number(it?.valor_unitario || 0);
+  return isChurrasco(it) ? unit : qtd * unit;
 }
-function fmtQty(it) {
- const unit = String(it?.unidade || "UN").toUpperCase();
- const n = Number(it?.quantidade || 0);
- if (unit === "KG") {
-   const v = Number(n.toFixed(2));
-   const str = v.toLocaleString("pt-BR", {
-     minimumFractionDigits: v % 1 ? 2 : 0,
-     maximumFractionDigits: 2,
-   });
-   return `${str} kg`;
- }
- return `${Math.round(n)} un`;
+
+function sortItems(items, sortKey) {
+  const arr = [...items];
+  switch (sortKey) {
+    case "name_asc":
+      arr.sort((a, b) =>
+        (a.nome || "").localeCompare(b.nome || "", "pt-BR", {
+          sensitivity: "base",
+        }),
+      );
+      break;
+    case "value_desc":
+      arr.sort(
+        (a, b) => totalOfItem(b) - totalOfItem(a),
+      );
+      break;
+    case "value_asc":
+      arr.sort(
+        (a, b) => totalOfItem(a) - totalOfItem(b),
+      );
+      break;
+    case "created_desc":
+    default:
+      arr.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+      break;
+  }
+  return arr;
 }
+
+function sumTotals(items) {
+  return items.reduce(
+    (acc, it) => {
+      acc.qtd += Number(it.quantidade || 0);
+      acc.total += totalOfItem(it);
+      return acc;
+    },
+    { qtd: 0, total: 0 },
+  );
+}
+
+function renderSummaryRow(items, forChurrasco) {
+  const { qtd, total } = sumTotals(items);
+  const qtdLabel = forChurrasco
+    ? formatQuantidade(qtd, "Churrasco")
+    : `${qtd.toLocaleString("pt-BR")} un`;
+
+  return `
+    <tr class="row-summary">
+      <td><b>Resumo</b></td>
+      <td><b>${qtdLabel}</b></td>
+      <td>—</td>
+      <td><b>${brl(total)}</b></td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+    </tr>
+  `;
+}
+
+function renderTableBlock({ title, items, showCategory }) {
+  return `
+  <div class="card section only-desktop" style="margin-top:12px">
+    <div class="row space-between">
+      <h2>${title}</h2>
+      <div class="muted" style="font-size:12px">${items.length} item(ns)</div>
+    </div>
+
+    <div class="table-wrap" style="margin-top:10px">
+      <table>
+        <thead>
+          <tr>
+            <th>Item</th>
+            <th>Qtd</th>
+            <th>V. Unit.</th>
+            <th>Total</th>
+            <th>Status</th>
+            <th>Colaborador</th>
+            <th>Ações</th>
+          </tr>
+        </thead>
+
+        <tbody>
+          ${items
+            .map((it) => {
+              const total = totalOfItem(it);
+              const isBought = it.status === "COMPRADO";
+
+              const statusBadge = isBought
+                ? `<span class="badge ok" role="button"
+                    data-action="toggle-status"
+                    data-id="${it.id}"
+                    data-next="PENDENTE">✔ Comprado</span>`
+                : `<span class="badge pending" role="button"
+                    data-action="toggle-status"
+                    data-id="${it.id}"
+                    data-next="COMPRADO">⏳ Pendente</span>`;
+
+              const qtdDisplay = isChurrasco(it)
+                ? formatQuantidade(it.quantidade, it.categoria)
+                : it.quantidade;
+
+              return `
+              <tr class="${isBought ? "row-bought" : ""}">
+                <td>
+                  <div class="item-name" style="font-weight:700">${it.nome}</div>
+                  ${
+                    showCategory
+                      ? `<div class="muted" style="font-size:12px;margin-top:2px">
+                        ${it.categoria || "Geral"}
+                      </div>`
+                      : ""
+                  }
+                </td>
+
+                <td style="min-width:140px">
+                  <div class="editing-cell">
+                    <span data-view>${qtdDisplay}</span>
+                    <button
+                      class="icon-btn"
+                      title="Editar quantidade"
+                      data-action="edit-cell"
+                      data-field="quantidade"
+                      data-id="${it.id}"
+                    >✏️</button>
+                  </div>
+                </td>
+
+                <td style="min-width:180px">
+                  <div class="editing-cell">
+                    <span data-view>${brl(it.valor_unitario)}</span>
+                    <button
+                      class="icon-btn"
+                      title="Editar valor unitário"
+                      data-action="edit-cell"
+                      data-field="valor_unitario"
+                      data-id="${it.id}"
+                    >✏️</button>
+                  </div>
+                </td>
+
+                <td><b>${brl(total)}</b></td>
+                <td>${statusBadge}</td>
+                <td class="collab-name-cell"><span class="collab-name">${collabName(it)}</span></td>
+
+                <td>
+                   <div class="row actions-row" style="gap:6px">
+                    <button class="btn small" data-action="edit" data-id="${it.id}">Editar</button>
+                    <button class="btn small danger" data-action="delete" data-id="${it.id}">Excluir</button>
+                  </div>
+                </td>
+              </tr>
+            `;
+            })
+            .join("")}
+          ${renderSummaryRow(items, !showCategory)}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  `;
+}
+
 export function renderItemListControls(state) {
- return `
-<div class="card section">
-<div class="row space-between">
-<div class="row" style="gap:10px">
-<button class="btn primary" data-action="open-add">+ Adicionar item</button>
-<div class="row" style="gap:6px">
-<button class="btn small ${state.filterStatus === "ALL" ? "primary" : ""}" data-filter="ALL">Todos</button>
-<button class="btn small ${state.filterStatus === "PENDENTE" ? "primary" : ""}" data-filter="PENDENTE">Pendentes</button>
-<button class="btn small ${state.filterStatus === "COMPRADO" ? "primary" : ""}" data-filter="COMPRADO">Comprados</button>
-</div>
-</div>
-<div class="row">
-<input
-         class="input"
-         id="searchInput"
-         placeholder="Buscar item..."
-         value="${state.searchText || ""}"
-       />
-<select id="sortSelect">
-<option value="created_desc" ${state.sortKey === "created_desc" ? "selected" : ""}>Mais recentes</option>
-<option value="name_asc" ${state.sortKey === "name_asc" ? "selected" : ""}>Nome (A-Z)</option>
-<option value="value_desc" ${state.sortKey === "value_desc" ? "selected" : ""}>Maior total</option>
-<option value="value_asc" ${state.sortKey === "value_asc" ? "selected" : ""}>Menor total</option>
-</select>
-</div>
-</div>
-</div>
- `;
+  return `
+  <div class="card section">
+    <div class="row space-between">
+      <div class="row" style="gap:10px">
+        <button class="btn primary" data-action="open-add">+ Adicionar item</button>
+
+        <div class="row" style="gap:6px">
+          <button class="btn small ${state.filterStatus === "ALL" ? "primary" : ""}" data-filter="ALL">Todos</button>
+          <button class="btn small ${state.filterStatus === "PENDENTE" ? "primary" : ""}" data-filter="PENDENTE">Pendentes</button>
+          <button class="btn small ${state.filterStatus === "COMPRADO" ? "primary" : ""}" data-filter="COMPRADO">Comprados</button>
+        </div>
+      </div>
+
+      <div class="row">
+        <input
+          class="input"
+          id="searchInput"
+          placeholder="Buscar item..."
+          value="${state.searchText || ""}"
+        />
+
+        <select id="sortSelect">
+          <option value="created_desc" ${state.sortKey === "created_desc" ? "selected" : ""}>Mais recentes</option>
+          <option value="name_asc" ${state.sortKey === "name_asc" ? "selected" : ""}>Nome (A-Z)</option>
+          <option value="value_desc" ${state.sortKey === "value_desc" ? "selected" : ""}>Maior total</option>
+          <option value="value_asc" ${state.sortKey === "value_asc" ? "selected" : ""}>Menor total</option>
+        </select>
+      </div>
+    </div>
+  </div>
+  `;
 }
-export function renderItemTable(items, opts = {}) {
- const title = opts.title || "Lista de Compras";
- const countLabel = opts.countLabel || "item(ns)";
- const totalQtyUn = items.reduce((a, it) => {
-   const unit = String(it.unidade || "UN").toUpperCase();
-   return a + (unit === "KG" ? 0 : Number(it.quantidade || 0));
- }, 0);
- const totalQtyKg = items.reduce((a, it) => {
-   const unit = String(it.unidade || "UN").toUpperCase();
-   return a + (unit === "KG" ? Number(it.quantidade || 0) : 0);
- }, 0);
- const totalBought = items.reduce((a, it) => {
-   if (it.status !== "COMPRADO") return a;
-   return a + Number(it.quantidade || 0) * Number(it.valor_unitario || 0);
- }, 0);
- const qtySummary = (() => {
-   const unLine = `${fmtQtyTotal(totalQtyUn)} un`;
-   const kgLine = `${fmtQtyTotal(totalQtyKg)} kg`;
-   if (opts.summaryMode === "KG_ONLY") {
-     return totalQtyKg > 0 ? kgLine : "0 kg";
-   }
-   if (totalQtyKg > 0.000001) {
-     return `${unLine}<div class="qty-sub">${kgLine}</div>`;
-   }
-   return unLine;
- })();
- const summaryRow = items.length
-   ? `
-<tr class="row-summary">
-<td><b>Resumo</b></td>
-<td>${qtySummary}</td>
-<td></td>
-<td><b>${brl(totalBought)}</b></td>
-<td colspan="3"></td>
-</tr>`
-   : "";
- return `
-<div class="card section" style="margin-top:12px">
-<div class="row space-between">
-<h2>${title}</h2>
-<div class="muted" style="font-size:12px">${items.length} ${countLabel}</div>
-</div>
-<div class="table-wrap" style="margin-top:10px">
-<table>
-<thead>
-<tr>
-<th>Item</th>
-<th>Qtd</th>
-<th>V. Unit.</th>
-<th>Total</th>
-<th>Status</th>
-<th>Colaborador</th>
-<th>Ações</th>
-</tr>
-</thead>
-<tbody>
-         ${items
-           .map((it) => {
-             const total = Number(it.quantidade || 0) * Number(it.valor_unitario || 0);
-             const isBought = it.status === "COMPRADO";
-             const statusBadge = isBought
-               ? `<span class="badge ok" role="button"
-                     data-action="toggle-status"
-                     data-id="${it.id}"
-                     data-next="PENDENTE">✔ Comprado</span>`
-               : `<span class="badge pending" role="button"
-                     data-action="toggle-status"
-                     data-id="${it.id}"
-                     data-next="COMPRADO">⏳ Pendente</span>`;
-             return `
-<tr class="${isBought ? "row-bought" : ""}">
-<td style="font-weight:700">${it.nome}</td>
-<td style="min-width:140px">
-<div class="editing-cell">
-<span data-view>${fmtQty(it)}</span>
-<button
-                       class="icon-btn"
-                       title="Editar quantidade"
-                       data-action="edit-cell"
-                       data-field="quantidade"
-                       data-id="${it.id}"
->✏️</button>
-</div>
-</td>
-<td style="min-width:180px">
-<div class="editing-cell">
-<span data-view>${brl(it.valor_unitario)}</span>
-<button
-                       class="icon-btn"
-                       title="Editar valor unitário"
-                       data-action="edit-cell"
-                       data-field="valor_unitario"
-                       data-id="${it.id}"
->✏️</button>
-</div>
-</td>
-<td><b>${brl(total)}</b></td>
-<td>${statusBadge}</td>
-<td>${collabName(it)}</td>
-<td>
-<div class="row" style="gap:6px">
-<button class="btn small" data-action="edit" data-id="${it.id}">Editar</button>
-<button class="btn small danger" data-action="delete" data-id="${it.id}">Excluir</button>
-</div>
-</td>
-</tr>
-             `;
-           })
-           .join("")}
-         ${summaryRow}
-</tbody>
-</table>
-</div>
-</div>
- `;
+
+export function renderItemTable(items, sortKey) {
+  const churrasco = sortItems(items.filter(isChurrasco), sortKey);
+  const others = sortItems(
+    items.filter((it) => !isChurrasco(it)),
+    sortKey,
+  );
+
+  return `
+    ${renderTableBlock({
+      title: "Lista de Compras",
+      items: others,
+      showCategory: true,
+    })}
+    ${renderTableBlock({
+      title: "Itens por peso (Carnes, queijos e etc.)",
+      items: churrasco,
+      showCategory: false,
+    })}
+  `;
 }
-/**
-* ✅ MOBILE: layout tipo suas referências:
-* - topo: nome + Total
-* - meio: preço unit (com lápis) + quantidade com -/+
-* - baixo: ações (editar/excluir/comprado)
-*
-* Observação: o lápis do preço usa o MESMO mecanismo edit-cell do app.js.
-* O -/+ chama data-action="qty-step" (você precisa tratar isso no app.js).
-*/
-export function renderItemMobileList(items, opts = {}) {
- const totalQtyUn = items.reduce((a, it) => {
-   const unit = String(it.unidade || "UN").toUpperCase();
-   return a + (unit === "KG" ? 0 : Number(it.quantidade || 0));
- }, 0);
- const totalQtyKg = items.reduce((a, it) => {
-   const unit = String(it.unidade || "UN").toUpperCase();
-   return a + (unit === "KG" ? Number(it.quantidade || 0) : 0);
- }, 0);
- const totalBought = items.reduce((a, it) => {
-   if (it.status !== "COMPRADO") return a;
-   return a + Number(it.quantidade || 0) * Number(it.valor_unitario || 0);
- }, 0);
- const qtySummaryMobile = (() => {
-   const unLine = `${fmtQtyTotal(totalQtyUn)} un`;
-   const kgLine = `${fmtQtyTotal(totalQtyKg)} kg`;
-   if (opts.summaryMode === "KG_ONLY") {
-     return `<div class="mmeta">Qtd total: ${kgLine}</div>`;
-   }
-   if (totalQtyKg > 0.000001) {
-     return `<div class="mmeta">Qtd total: ${unLine}</div><div class="mmeta qty-sub">${kgLine}</div>`;
-   }
-   return `<div class="mmeta">Qtd total: ${unLine}</div>`;
- })();
- const summaryCard = items.length
-   ? `
-<div class="mcard summary">
-<div class="mcard-inner">
-<div class="row space-between">
-<div>
-<div class="mname">Resumo</div>
-${qtySummaryMobile}
-</div>
-<div class="mtotal">
-<div class="label">Total comprado</div>
-<div class="value">${fmtMoney(totalBought)}</div>
-</div>
-</div>
-</div>
-</div>`
-   : "";
- return `
-<div class="mobile-list" aria-label="Lista mobile">
-     ${items
-       .map((it) => {
-         const qtd = Number(it.quantidade || 0);
-         const unit = Number(it.valor_unitario || 0);
-         const total = qtd * unit;
-         const isBought = it.status === "COMPRADO";
-         const next = isBought ? "PENDENTE" : "COMPRADO";
-         return `
-<div class="mcard ${isBought ? "row-bought" : ""}">
-<div class="mcard-inner">
-<div class="mcard-header">
-<div class="mname">${it.nome}</div>
-<div class="mtotal">
-<div class="label">Total</div>
-<div class="value">${fmtMoney(total)}</div>
-</div>
-</div>
-<div class="mmeta">Por: ${collabName(it)}</div>
-<div class="mrow">
-<div class="mrow-labels">
-<div class="mfield-label">Preço (unit)</div>
-<div class="mfield-label">Quantidade</div>
-</div>
-<div class="mrow-values">
-<div class="mfield">
-<div class="price-edit-wrapper editing-cell">
-<span class="price-value" data-view>${fmtMoney(unit)}</span>
-<button
-  class="price-edit-btn"
-  title="Editar preço"
-  data-action="edit-cell"
-  data-field="valor_unitario"
-  data-id="${it.id}"
->✏️</button>
-</div>
-</div>
-<div class="mfield">
-<div class="qty-edit-wrapper">
-<div class="qtynum-simple">${fmtQty(it)}</div>
-<div class="qty-controls">
-<button class="qtybtn-compact" title="Diminuir" data-action="qty-step" data-id="${it.id}" data-delta="-1">−</button>
-<button class="qtybtn-compact" title="Aumentar" data-action="qty-step" data-id="${it.id}" data-delta="1">+</button>
-</div>
-</div>
-</div>
-<div class="mactions-inline">
-<button class="icon-btn-action" data-action="edit" data-id="${it.id}" title="Editar">✏️</button>
-<button class="icon-btn-action danger" data-action="delete" data-id="${it.id}" title="Excluir">✕</button>
-<button
-  class="icon-btn-action ${isBought ? "active" : ""}"
-  data-action="toggle-status"
-  data-id="${it.id}"
-  data-next="${next}"
-  title="Marcar como ${isBought ? "pendente" : "comprado"}"
->✔</button>
-</div>
-</div>
-</div>
-</div>
-</div>
-         `;
-       })
-       .join("")}
-     ${summaryCard}
-</div>
- `;
+
+export function renderItemMobileList(items, sortKey) {
+  const churrasco = sortItems(items.filter(isChurrasco), sortKey);
+  const others = sortItems(
+    items.filter((it) => !isChurrasco(it)),
+    sortKey,
+  );
+
+  const renderMobileBlock = (title, blockItems, showCategory) => {
+    const { qtd, total } = sumTotals(blockItems);
+    const qtdLabel = showCategory
+      ? `${qtd.toLocaleString("pt-BR")} un`
+      : formatQuantidade(qtd, "Churrasco");
+
+    const header = `
+      <div class="card section only-mobile" style="margin-top:12px">
+        <div class="row space-between">
+          <h2>${title}</h2>
+          <div class="muted" style="font-size:12px">${blockItems.length} item(ns)</div>
+        </div>
+      </div>
+    `;
+
+    return `
+      ${header}
+      <div class="mobile-list" aria-label="Lista mobile ${title}">
+        ${blockItems
+          .map((it) => {
+            const totalItem = totalOfItem(it);
+            const isBought = it.status === "COMPRADO";
+            const next = isBought ? "PENDENTE" : "COMPRADO";
+            const qtdDisplay = isChurrasco(it)
+              ? formatQuantidade(it.quantidade, it.categoria)
+              : `${Number(it.quantidade || 0).toLocaleString("pt-BR")} un`;
+
+            return `
+            <div class="mcard ${isBought ? "row-bought" : ""}">
+              <div class="mcard-inner">
+                <div class="mcard-header">
+                  <div class="mname">${it.nome}</div>
+                  <div class="mtotal">
+                    <div class="label">Total</div>
+                    <div class="value">${brl(totalItem)}</div>
+                  </div>
+                </div>
+
+                <div class="mmeta">
+                  ${showCategory ? `<span>${it.categoria || "Geral"}</span>` : ""}
+                  <span>Por: <b>${collabName(it)}</b></span>
+                </div>
+
+                <div class="mrow">
+                  <div class="mrow-labels">
+                    <div class="mfield-label">Preço (unit)</div>
+                    <div class="mfield-label">Quantidade</div>
+                  </div>
+                  <div class="mrow-values">
+                    <div class="pill">
+                      <div class="pvalue">${brl(it.valor_unitario)}</div>
+                    </div>
+                    <div class="pill qtybox">
+                      <div class="pvalue">${qtdDisplay}</div>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="mactions-inline">
+                  <button class="icon-btn-action ${isBought ? "active" : ""}" title="Marcar" data-action="toggle-status" data-id="${it.id}" data-next="${next}">
+                    ${isBought ? "↩️" : "✔️"}
+                  </button>
+                  <button class="icon-btn-action" title="Editar" data-action="edit" data-id="${it.id}">✏️</button>
+                  <button class="icon-btn-action danger" title="Excluir" data-action="delete" data-id="${it.id}">🗑️</button>
+                </div>
+              </div>
+            </div>
+          `;
+          })
+          .join("")}
+
+        <div class="mcard summary">
+          <div class="mcard-inner">
+            <div class="mcard-header">
+              <div class="mname">Resumo</div>
+              <div class="mtotal">
+                <div class="label">Total</div>
+                <div class="value">${brl(total)}</div>
+              </div>
+            </div>
+            <div class="mmeta">
+              <span>Qtd: <b>${qtdLabel}</b></span>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+  };
+
+  return `
+    ${renderMobileBlock("Lista de Compras", others, true)}
+    ${renderMobileBlock("Itens por peso (Carnes, queijos e etc.)", churrasco, false)}
+  `;
 }

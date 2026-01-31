@@ -1,3 +1,5 @@
+import { formatQuantidade, isPesoCategoria } from "../utils/format.js";
+
 export function renderItemFormModal() {
   return `
   <div class="modal-backdrop" id="modalBackdrop">
@@ -20,27 +22,43 @@ export function renderItemFormModal() {
 
         <div>
           <label class="muted" style="font-size:12px">Quantidade</label>
-          <input class="input" name="quantidade" type="number" min="0" step="1" value="1" required />
+          <input
+            class="input"
+            name="quantidade"
+            type="text"
+            inputmode="decimal"
+            placeholder="Ex: 2 ou 1kg, 500g"
+            required
+          />
         </div>
 
         <div>
           <label class="muted" style="font-size:12px">Tipo</label>
-          <select name="unidade">
-            <option value="UN" selected>Unidade</option>
-            <option value="KG">Kg</option>
+          <select name="tipo">
+            <option value="UNIDADE">Unidade</option>
+            <option value="PESO">Peso (kg/g)</option>
           </select>
         </div>
+
         <div>
           <label class="muted" style="font-size:12px">Categoria</label>
           <select name="categoria">
-            <option value="Geral" selected>Geral</option>
-            <option value="Carnes">Carnes</option>
+            <option value="Geral">Geral</option>
+            <option value="Churrasco">Itens por peso (Carnes, queijos e etc.)</option>
           </select>
         </div>
 
         <div>
           <label class="muted" style="font-size:12px">Valor unitário (R$)</label>
           <input class="input" name="valor_unitario" type="number" min="0" step="0.01" value="0" required />
+        </div>
+
+        <div class="full">
+          <label class="muted" style="font-size:12px">Status</label>
+          <select name="status">
+            <option value="PENDENTE" selected>Pendente</option>
+            <option value="COMPRADO">Comprado</option>
+          </select>
         </div>
 
         <div class="full row space-between" style="margin-top:8px">
@@ -58,6 +76,17 @@ export function renderItemFormModal() {
   `;
 }
 
+function ensureOption(selectEl, value) {
+  if (!value || !selectEl) return;
+  const exists = Array.from(selectEl.options).some((o) => o.value === value);
+  if (exists) return;
+
+  const opt = document.createElement("option");
+  opt.value = value;
+  opt.textContent = value;
+  selectEl.appendChild(opt);
+}
+
 export function openModal({ title, subtitle, hint, data }) {
   const backdrop = document.getElementById("modalBackdrop");
   backdrop.style.display = "flex";
@@ -71,19 +100,30 @@ export function openModal({ title, subtitle, hint, data }) {
 
   if (data) {
     form.nome.value = data.nome ?? "";
-    form.quantidade.value = data.quantidade ?? 1;
+    form.quantidade.value = formatQuantidade(
+      data.quantidade ?? 1,
+      data.categoria,
+    );
     form.valor_unitario.value = data.valor_unitario ?? 0;
-    form.unidade.value = (data.unidade || "UN").toUpperCase();
-    if (form.categoria) form.categoria.value = data.categoria || "Geral";
+
+    ensureOption(form.categoria, data.categoria);
+    form.categoria.value = data.categoria ?? "Geral";
+    form.tipo.value = isPesoCategoria(data.categoria) ? "PESO" : "UNIDADE";
+
     form.id.value = data.id ?? "";
   } else {
+    form.categoria.value = "Geral";
+    form.tipo.value = "UNIDADE";
     form.id.value = "";
-    if (form.unidade) form.unidade.value = "UN";
-    if (form.categoria) form.categoria.value = "Geral";
+    form.quantidade.value = "";
   }
-  if (form.unidade) {
-    form.unidade.dispatchEvent(new Event("change", { bubbles: true }));
-  }
+
+  const isPeso = isPesoCategoria(form.categoria.value);
+  form.quantidade.placeholder = isPeso
+    ? "Ex: 1kg ou 0.5g"
+    : "Ex: 2 ou 2,5";
+
+  form.status.value = data?.status ?? "PENDENTE";
 
   form.nome.focus();
 }

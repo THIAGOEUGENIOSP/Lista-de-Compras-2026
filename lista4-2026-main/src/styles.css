@@ -48,6 +48,26 @@ a{ color: inherit; }
 .space-between{ justify-content: space-between; }
 .muted{ color: var(--muted); }
 
+.actions-inline{
+  flex-wrap: nowrap;
+  gap: 8px;
+  white-space: nowrap;
+}
+.actions-inline .btn{
+  white-space: nowrap;
+}
+
+.item-name{
+  white-space: nowrap;
+}
+
+.collab-name-cell{
+  white-space: nowrap;
+}
+.collab-name{
+  white-space: nowrap;
+}
+
 h1,h2,h3{ margin:0; }
 h1{ font-size: 20px; letter-spacing: .2px; }
 h2{ font-size: 16px; }
@@ -139,6 +159,7 @@ th{ color: var(--muted); font-weight: 600; }
   border-radius: 999px;
   border: 1px solid var(--border);
   font-size: 12px;
+  white-space: nowrap;
 }
 .badge.ok{ border-color: rgba(34,197,94,.35); background: rgba(34,197,94,.12); }
 .badge.pending{ border-color: rgba(245,158,11,.35); background: rgba(245,158,11,.12); }
@@ -312,6 +333,31 @@ table tbody tr:hover{
   align-items: center;
   justify-content: center;
 }
+
+
+
+.actions-row{
+  flex-wrap: nowrap;
+}
+.actions-row{
+  flex-wrap: nowrap;
+}
+
+
+.item-cell{
+  white-space: nowrap;
+  max-width: 260px;
+  overflow: hidden;
+}
+.item-cell{
+  white-space: nowrap;
+  max-width: 260px;
+  overflow: hidden;
+}
+
+.status-cell{
+  min-width: 120px;
+}
 .icon-btn:hover{
   color: var(--text);
   background: rgba(255,255,255,.06);
@@ -370,10 +416,12 @@ tr.row-bought .badge{
 /* ====== MOBILE: layout tipo app de compras (cards) ====== */
 .mobile-list{ display:none; } /* desktop esconde */
 .only-mobile{ display:none; }
+.only-desktop{ display:block; }
 @media (max-width: 768px){
  .table-wrap{ display:none; }
  .mobile-list{ display:grid; gap:12px; margin-top:10px; }
  .only-mobile{ display:block; }
+  .only-desktop{ display:none; }
   /* iOS: evita zoom automático ao focar inputs */
   .input, select, textarea{
     font-size: 16px;

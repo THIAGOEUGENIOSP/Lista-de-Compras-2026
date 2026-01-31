@@ -733,7 +733,7 @@ tr.row-bought .badge{
   }
   /* valor do preço */
   .pill .pvalue{
-    font-size: 14px;       /* ↓ era 15/16 */
+    font-size: 12px;
   }
   /* botões + / - menores */
   .qtybtn{

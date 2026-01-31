@@ -271,6 +271,9 @@ export function renderItemMobileList(items, sortKey) {
               ? formatQuantidade(it.quantidade, it.categoria)
               : `${Number(it.quantidade || 0).toLocaleString("pt-BR")} un`;
 
+            const categoria =
+              it.categoria && it.categoria !== "Geral" ? it.categoria : "";
+
             return `
             <div class="mcard ${isBought ? "row-bought" : ""}">
               <div class="mcard-inner">
@@ -283,7 +286,7 @@ export function renderItemMobileList(items, sortKey) {
                 </div>
 
                 <div class="mmeta">
-                  ${showCategory ? `<span>${it.categoria || "Geral"}</span>` : ""}
+                  ${showCategory && categoria ? `<span>${categoria}</span>` : ""}
                   <span>Por: <b>${collabName(it)}</b></span>
                 </div>
 
@@ -291,6 +294,7 @@ export function renderItemMobileList(items, sortKey) {
                   <div class="mrow-labels">
                     <div class="mfield-label">Preço (unit)</div>
                     <div class="mfield-label">Quantidade</div>
+                    <div class="mfield-label mactions-label">Ações</div>
                   </div>
                   <div class="mrow-values">
                     <div class="pill">
@@ -299,15 +303,14 @@ export function renderItemMobileList(items, sortKey) {
                     <div class="pill qtybox">
                       <div class="pvalue">${qtdDisplay}</div>
                     </div>
+                    <div class="mactions-inline">
+                      <button class="icon-btn-action ${isBought ? "active" : ""}" title="Marcar" data-action="toggle-status" data-id="${it.id}" data-next="${next}">
+                        ${isBought ? "↩️" : "✔️"}
+                      </button>
+                      <button class="icon-btn-action" title="Editar" data-action="edit" data-id="${it.id}">✏️</button>
+                      <button class="icon-btn-action danger" title="Excluir" data-action="delete" data-id="${it.id}">🗑️</button>
+                    </div>
                   </div>
-                </div>
-
-                <div class="mactions-inline">
-                  <button class="icon-btn-action ${isBought ? "active" : ""}" title="Marcar" data-action="toggle-status" data-id="${it.id}" data-next="${next}">
-                    ${isBought ? "↩️" : "✔️"}
-                  </button>
-                  <button class="icon-btn-action" title="Editar" data-action="edit" data-id="${it.id}">✏️</button>
-                  <button class="icon-btn-action danger" title="Excluir" data-action="delete" data-id="${it.id}">🗑️</button>
                 </div>
               </div>
             </div>

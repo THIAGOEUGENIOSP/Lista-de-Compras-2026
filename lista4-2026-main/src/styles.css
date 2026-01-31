@@ -482,7 +482,7 @@ tr.row-bought .badge{
    line-height: 1;
  }
  .mrow{
-   margin-top: 1px;
+   margin-top: 6px;
    display: flex;
    flex-direction: column;
    gap: 2px;
@@ -490,7 +490,10 @@ tr.row-bought .badge{
  .mrow-labels{
    display: flex;
    gap: 33px;
-   margin-bottom: 0px;
+   margin-bottom: 6px;
+ }
+ .mactions-label{
+   margin-left: auto;
  }
  .mfield-label{
    font-size: 10px;
@@ -502,6 +505,7 @@ tr.row-bought .badge{
    display: flex;
    align-items: center;
    gap: 16px;
+   flex-wrap: nowrap;
  }
  .mfield{
    flex: 0 0 auto;
@@ -627,9 +631,10 @@ tr.row-bought .badge{
  }
  .mactions-inline{
    display: flex;
-   gap: 8px;
+   gap: 6px;
    align-items: center;
    flex-shrink: 0;
+   margin-left: auto;
  }
  .mactions .btn{
    width: 100%;
@@ -712,9 +717,9 @@ tr.row-bought .badge{
  @media (max-width: 768px){
   /* campos Preço e Quantidade menores */
   .pill{
-    height: 42px;          /* ↓ era 58 */
+    height: 32px;
     padding: 0 10px;
-    border-radius: 12px;
+    border-radius: 8px;
   }
   /* valor do preço */
   .pill .pvalue{

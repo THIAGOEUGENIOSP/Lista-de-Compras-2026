@@ -125,13 +125,7 @@ function renderTableBlock({ title, items, showCategory }) {
               <tr class="${isBought ? "row-bought" : ""}">
                 <td>
                   <div class="item-name" style="font-weight:700">${it.nome}</div>
-                  ${
-                    showCategory
-                      ? `<div class="muted" style="font-size:12px;margin-top:2px">
-                        ${it.categoria || "Geral"}
-                      </div>`
-                      : ""
-                  }
+                  
                 </td>
 
                 <td style="min-width:140px">

@@ -64,13 +64,90 @@ export function buildCharts() {
     },
   });
 
+  const valueLabelPlugin = {
+    id: "valueLabel",
+    afterDatasetsDraw(chart, _args, pluginOptions) {
+      const { ctx } = chart;
+      const datasetIndex = 0;
+      const meta = chart.getDatasetMeta(datasetIndex);
+      const data = chart.data.datasets[datasetIndex]?.data || [];
+
+      ctx.save();
+      ctx.textAlign = "center";
+      ctx.textBaseline = "bottom";
+      ctx.font = pluginOptions?.font || "11px system-ui, -apple-system, Segoe UI";
+
+      const area = chart.chartArea;
+      data.forEach((value, i) => {
+        const point = meta.data[i];
+        if (!point) return;
+        const pos = point.getProps(["x", "y"], true);
+        const text = new Intl.NumberFormat("pt-BR", {
+          style: "currency",
+          currency: "BRL",
+        }).format(Number(value || 0));
+        const y = Math.max(pos.y - 8, area.top + 16);
+
+        // fundo para melhorar legibilidade
+        const paddingX = 6;
+        const paddingY = 3;
+        const metrics = ctx.measureText(text);
+        const textW = metrics.width;
+        const textH = 12;
+        const boxW = textW + paddingX * 2;
+        const boxH = textH + paddingY * 2;
+        const boxX = pos.x - boxW / 2;
+        const boxY = y - boxH + 2;
+
+        ctx.fillStyle = pluginOptions?.bg || "rgba(11,14,20,0.75)";
+        const r = 6;
+        ctx.beginPath();
+        ctx.moveTo(boxX + r, boxY);
+        ctx.lineTo(boxX + boxW - r, boxY);
+        ctx.quadraticCurveTo(boxX + boxW, boxY, boxX + boxW, boxY + r);
+        ctx.lineTo(boxX + boxW, boxY + boxH - r);
+        ctx.quadraticCurveTo(boxX + boxW, boxY + boxH, boxX + boxW - r, boxY + boxH);
+        ctx.lineTo(boxX + r, boxY + boxH);
+        ctx.quadraticCurveTo(boxX, boxY + boxH, boxX, boxY + boxH - r);
+        ctx.lineTo(boxX, boxY + r);
+        ctx.quadraticCurveTo(boxX, boxY, boxX + r, boxY);
+        ctx.fill();
+
+        // linha de apoio até o ponto
+        ctx.strokeStyle = pluginOptions?.lineColor || "rgba(148,163,184,0.35)";
+        ctx.lineWidth = 0.8;
+        ctx.beginPath();
+        const lineTop = boxY + boxH;
+        const lineBottom = Math.max(pos.y - 4, lineTop + 10);
+        ctx.moveTo(pos.x, lineTop);
+        ctx.lineTo(pos.x, lineBottom);
+        ctx.stroke();
+
+        ctx.fillStyle = pluginOptions?.color || "#e5e7eb";
+        ctx.fillText(text, pos.x, y);
+      });
+
+      ctx.restore();
+    },
+  };
+
   const monthlyChart = new Chart(ctxMonthly, {
     type: "line",
     data: { labels: [], datasets: [{ label: "Total (R$)", data: [] }] },
+    plugins: [valueLabelPlugin],
     options: {
       responsive: true,
       maintainAspectRatio: false,
-      plugins: { legend: { display: false } },
+      layout: { padding: { top: 18 } },
+      plugins: {
+        legend: { display: false },
+        valueLabel: {
+          color: "#ffffff",
+          bg: "rgba(11,14,20,0.94)",
+          lineColor: "rgba(203,213,245,0.6)",
+          font: "11px system-ui, -apple-system, Segoe UI",
+        },
+      },
     },
   });
 

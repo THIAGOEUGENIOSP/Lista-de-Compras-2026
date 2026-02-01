@@ -628,6 +628,13 @@ function bindDelegatedEvents() {
           hint: `Colaborador: ${state.collaboratorName}`,
           data: null,
         });
+        const form = qs("#itemForm");
+        if (form?.valor_unitario) {
+          bindCurrencyInputs(form);
+          form.valor_unitario.value = brl(
+            parseCurrencyBRL(form.valor_unitario.value),
+          );
+        }
         return;
       }
 
@@ -642,6 +649,13 @@ function bindDelegatedEvents() {
           hint: `Criado por: ${getCollaboratorName(it)}`,
           data: it,
         });
+        const form = qs("#itemForm");
+        if (form?.valor_unitario) {
+          bindCurrencyInputs(form);
+          form.valor_unitario.value = brl(
+            parseCurrencyBRL(form.valor_unitario.value),
+          );
+        }
         return;
       }
 

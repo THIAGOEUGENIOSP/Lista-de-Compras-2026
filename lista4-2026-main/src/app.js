@@ -1,7 +1,7 @@
 // src/app.js
 import { sb } from "./config/supabase.js";
 import { getTheme, setTheme, qs, qsa } from "./utils/ui.js";
-import { num, formatQuantidade, isPesoCategoria } from "./utils/format.js";
+import { brl, num, formatQuantidade, isPesoCategoria } from "./utils/format.js";
 import { addMonths, monthKey, periodName } from "./utils/period.js";
 
 import { mountToast } from "./components/toast.js";
@@ -128,6 +128,53 @@ function parseQuantidade(raw, categoria) {
   return { value, unit, isPeso };
 }
 
+function parseCurrencyBRL(raw) {
+  const cleaned = String(raw ?? "")
+    .replace(/[^\d,.\-]/g, "")
+    .replace(/\s+/g, "")
+    .trim();
+  if (!cleaned) return 0;
+
+  const lastComma = cleaned.lastIndexOf(",");
+  const lastDot = cleaned.lastIndexOf(".");
+
+  let normalized = cleaned;
+  if (lastComma > lastDot) {
+    normalized = cleaned.replace(/\./g, "").replace(",", ".");
+  } else if (lastDot > lastComma) {
+    normalized = cleaned.replace(/,/g, "");
+  }
+
+  const n = Number(normalized);
+  return Number.isFinite(n) ? n : 0;
+}
+
+function bindCurrencyInputs(rootEl) {
+  qsa('input[data-currency="brl"]', rootEl || document).forEach((input) => {
+    if (input.dataset.boundCurrency) return;
+    input.dataset.boundCurrency = "true";
+
+    const formatFromDigits = (raw) => {
+      const digits = String(raw ?? "").replace(/\D/g, "");
+      const asNumber = Number(digits || 0) / 100;
+      return brl(asNumber);
+    };
+
+    input.addEventListener("input", () => {
+      const formatted = formatFromDigits(input.value);
+      input.value = formatted;
+      // mantém o cursor no final para evitar salto estranho no mobile
+      input.setSelectionRange(formatted.length, formatted.length);
+    });
+
+    input.addEventListener("focus", () => {
+      const formatted = formatFromDigits(input.value);
+      input.value = formatted;
+      input.setSelectionRange(formatted.length, formatted.length);
+    });
+  });
+}
+
 function computeKPIs(items) {
   const totalItems = items.length;
   const totalValue = items.reduce((a, it) => a + totalOfItem(it), 0);
@@ -232,17 +279,17 @@ function applyFilters() {
 }
 
 function rerenderListOnly() {
-  const list = document.querySelector(".mobile-list");
-  if (!list) return;
+  const listWrap = document.querySelector(".mobile-list-wrap");
+  if (!listWrap) return;
   const filtered = applyFilters();
-  list.outerHTML = renderItemMobileList(filtered, state.sortKey);
+  listWrap.outerHTML = renderItemMobileList(filtered, state.sortKey);
 }
 
 function rerenderTableOnly() {
-  const tableCard = document.querySelector(".table-wrap")?.parentElement;
-  if (!tableCard) return;
+  const tableWrap = document.querySelector(".table-list-wrap");
+  if (!tableWrap) return;
   const filtered = applyFilters();
-  tableCard.outerHTML = renderItemTable(filtered, state.sortKey);
+  tableWrap.outerHTML = renderItemTable(filtered, state.sortKey);
 }
 
 function renderNameGate() {
@@ -441,6 +488,8 @@ function bindPerRenderInputs() {
       syncTipo();
     }
 
+    bindCurrencyInputs(form);
+
     form.addEventListener("submit", async (e) => {
       e.preventDefault();
       try {
@@ -450,7 +499,7 @@ function bindPerRenderInputs() {
         const payload = {
           nome: String(fd.get("nome") || "").trim(),
           quantidade: 0,
-          valor_unitario: num(fd.get("valor_unitario") || 0),
+          valor_unitario: parseCurrencyBRL(fd.get("valor_unitario") || 0),
           categoria: String(fd.get("categoria") || "Geral").trim() || "Geral",
           status: String(fd.get("status") || "PENDENTE"),
         };
@@ -628,86 +677,10 @@ function bindDelegatedEvents() {
         if (!cell) return;
         if (cell.querySelector("input")) return;
 
-        const inline =
-          el.dataset.inline === "true" ||
-          el.classList.contains("mobile-edit-cell") ||
-          el.closest(".mobile-list");
-
         const currentValue =
           field === "quantidade"
             ? formatQuantidade(it.quantidade ?? 0, it.categoria)
-            : num(it.valor_unitario || 0);
-
-        if (inline) {
-          cell.innerHTML = `
-            <input
-              class="input cell-input"
-              type="text"
-              inputmode="decimal"
-              placeholder="${field === "quantidade" ? "Ex: 1kg ou 0.5g" : "0,00"}"
-              value="${currentValue}"
-            />
-          `;
-
-          const inp = cell.querySelector("input");
-          let committed = false;
-
-          const saveInline = async () => {
-            if (committed) return;
-            committed = true;
-
-            const raw = String(inp?.value ?? "").trim();
-            const patch = {};
-
-            if (!raw) {
-              if (field === "quantidade") {
-                patch.quantidade = 0;
-              } else {
-                patch.valor_unitario = 0;
-              }
-            } else if (field === "quantidade") {
-              const qtdParsed = parseQuantidade(raw, it.categoria);
-              if (!qtdParsed) {
-                toast.show({
-                  title: "Validação",
-                  message:
-                    isPesoCategoria(it.categoria)
-                      ? "Quantidade inválida. Use ex: 1kg ou 0.5g."
-                      : "Quantidade inválida. Use apenas números (ex: 2 ou 2,5).",
-                });
-                renderApp();
-                return;
-              }
-              patch.quantidade = qtdParsed.value;
-            } else {
-              patch.valor_unitario = num(raw);
-            }
-
-            const updated = normalizeItem(await updateItem(id, patch));
-            state.items = state.items.map((x) => (x.id === id ? updated : x));
-            renderApp();
-          };
-
-          inp.addEventListener("keydown", (ev) => {
-            if (ev.key === "Enter") {
-              ev.preventDefault();
-              saveInline();
-            }
-            if (ev.key === "Escape") {
-              ev.preventDefault();
-              committed = true;
-              renderApp();
-            }
-          });
-
-          inp.addEventListener("blur", () => {
-            saveInline();
-          });
-
-          inp.focus();
-          inp.select();
-          return;
-        }
+            : brl(it.valor_unitario || 0);
 
         cell.innerHTML = `
           <input
@@ -716,57 +689,70 @@ function bindDelegatedEvents() {
             inputmode="decimal"
             placeholder="${field === "quantidade" ? "Ex: 1kg ou 0.5g" : "0,00"}"
             value="${currentValue}"
+            ${field === "valor_unitario" ? 'data-currency="brl"' : ""}
           />
-          <div class="cell-actions">
-            <button class="btn small primary" data-action="save-cell" data-id="${id}" data-field="${field}">Salvar</button>
-            <button class="btn small" data-action="cancel-cell">Cancelar</button>
-          </div>
         `;
 
         const inp = cell.querySelector("input");
+        if (field === "valor_unitario") {
+          bindCurrencyInputs(cell);
+        }
+        let committed = false;
+
+        const saveInline = async () => {
+          if (committed) return;
+          committed = true;
+
+          const raw = String(inp?.value ?? "").trim();
+          const patch = {};
+
+          if (!raw) {
+            if (field === "quantidade") {
+              patch.quantidade = 0;
+            } else {
+              patch.valor_unitario = 0;
+            }
+          } else if (field === "quantidade") {
+            const qtdParsed = parseQuantidade(raw, it.categoria);
+            if (!qtdParsed) {
+              toast.show({
+                title: "Validação",
+                message:
+                  isPesoCategoria(it.categoria)
+                    ? "Quantidade inválida. Use ex: 1kg ou 0.5g."
+                    : "Quantidade inválida. Use apenas números (ex: 2 ou 2,5).",
+              });
+              renderApp();
+              return;
+            }
+            patch.quantidade = qtdParsed.value;
+          } else {
+            patch.valor_unitario = parseCurrencyBRL(raw);
+          }
+
+          const updated = normalizeItem(await updateItem(id, patch));
+          state.items = state.items.map((x) => (x.id === id ? updated : x));
+          renderApp();
+        };
+
+        inp.addEventListener("keydown", (ev) => {
+          if (ev.key === "Enter") {
+            ev.preventDefault();
+            saveInline();
+          }
+          if (ev.key === "Escape") {
+            ev.preventDefault();
+            committed = true;
+            renderApp();
+          }
+        });
+
+        inp.addEventListener("blur", () => {
+          saveInline();
+        });
+
         inp.focus();
         inp.select();
-        return;
-      }
-
-      if (action === "cancel-cell") {
-        renderApp();
-        return;
-      }
-
-      if (action === "save-cell") {
-        const id = el.dataset.id;
-        const field = el.dataset.field;
-
-        const cell = el.closest(".editing-cell");
-        const inp = cell?.querySelector("input");
-        const raw = String(inp?.value ?? "0");
-        const it = state.items.find((x) => x.id === id);
-        if (!it) return;
-
-        const patch = {};
-        if (field === "quantidade") {
-          const qtdParsed = parseQuantidade(raw, it.categoria);
-          if (!qtdParsed) {
-            toast.show({
-              title: "Validação",
-              message:
-                isPesoCategoria(it.categoria)
-                  ? "Quantidade inválida. Use ex: 1kg ou 0.5g."
-                  : "Quantidade inválida. Use apenas números (ex: 2 ou 2,5).",
-            });
-            return;
-          }
-          patch.quantidade = qtdParsed.value;
-        } else {
-          patch.valor_unitario = num(raw);
-        }
-
-        const updated = normalizeItem(await updateItem(id, patch));
-        state.items = state.items.map((x) => (x.id === id ? updated : x));
-
-        toast.show({ title: "Salvo", message: "Atualizado com sucesso." });
-        renderApp();
         return;
       }
 

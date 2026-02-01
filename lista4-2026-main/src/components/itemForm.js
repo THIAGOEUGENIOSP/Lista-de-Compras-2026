@@ -50,7 +50,15 @@ export function renderItemFormModal() {
 
         <div>
           <label class="muted" style="font-size:12px">Valor unitário (R$)</label>
-          <input class="input" name="valor_unitario" type="number" min="0" step="0.01" value="0" required />
+          <input
+            class="input"
+            name="valor_unitario"
+            type="text"
+            inputmode="decimal"
+            data-currency="brl"
+            value="R$ 0,00"
+            required
+          />
         </div>
 
         <div class="full">
@@ -104,7 +112,10 @@ export function openModal({ title, subtitle, hint, data }) {
       data.quantidade ?? 1,
       data.categoria,
     );
-    form.valor_unitario.value = data.valor_unitario ?? 0;
+    form.valor_unitario.value = new Intl.NumberFormat("pt-BR", {
+      style: "currency",
+      currency: "BRL",
+    }).format(data.valor_unitario ?? 0);
 
     ensureOption(form.categoria, data.categoria);
     form.categoria.value = data.categoria ?? "Geral";
@@ -116,6 +127,10 @@ export function openModal({ title, subtitle, hint, data }) {
     form.tipo.value = "UNIDADE";
     form.id.value = "";
     form.quantidade.value = "";
+    form.valor_unitario.value = new Intl.NumberFormat("pt-BR", {
+      style: "currency",
+      currency: "BRL",
+    }).format(0);
   }
 
   const isPeso = isPesoCategoria(form.categoria.value);

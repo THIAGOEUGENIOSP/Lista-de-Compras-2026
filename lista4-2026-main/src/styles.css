@@ -372,6 +372,9 @@ table tbody tr:hover{
   align-items: center;
   gap: 6px;
 }
+.editing-cell [data-view]{
+  cursor: pointer;
+}
 
 .cell-actions{
   display:flex;

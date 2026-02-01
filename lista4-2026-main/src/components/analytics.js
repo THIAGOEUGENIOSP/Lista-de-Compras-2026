@@ -1,5 +1,11 @@
 // src/components/analytics.js
-export function renderAnalytics() {
+export function renderAnalytics(insights) {
+  const agent = insights || {};
+  const wasteItems = agent.wasteItems || [];
+  const priceyItems = agent.priceyItems || [];
+  const dupes = agent.duplicates || [];
+  const zeroPrice = agent.zeroPrice || [];
+
   return `
   <div class="card section" style="margin-top:12px">
     <div class="row space-between">
@@ -12,6 +18,74 @@ export function renderAnalytics() {
     </div>
 
     <div class="analytics-stack" style="margin-top:12px">
+      <div class="card section">
+        <h3>Agente Econômico</h3>
+        <div class="muted" style="font-size:12px;margin-top:4px">
+          Leitura automática de gastos e oportunidades de economia
+        </div>
+        <div style="margin-top:10px">
+          <div class="row space-between">
+            <div><b>Supérfluos</b></div>
+            <div><b>${agent.wasteTotalLabel || "R$ 0,00"}</b></div>
+          </div>
+          <div class="muted" style="font-size:12px;margin-top:2px">
+            ${agent.wastePctLabel || "0% do total"}
+          </div>
+        </div>
+
+        <div class="hr"></div>
+
+        <div class="grid" style="grid-template-columns:repeat(2,minmax(0,1fr));gap:12px">
+          <div>
+            <div class="muted" style="font-size:12px;margin-bottom:6px">Itens supérfluos (top)</div>
+            ${wasteItems.length
+              ? `<ul style="margin:0;padding-left:16px">
+                  ${wasteItems.map((x) => `<li>${x}</li>`).join("")}
+                </ul>`
+              : `<div class="muted" style="font-size:12px">Nenhum encontrado</div>`}
+          </div>
+          <div>
+            <div class="muted" style="font-size:12px;margin-bottom:6px">Possíveis economias</div>
+            <ul style="margin:0;padding-left:16px">
+              ${(agent.tips || []).map((x) => `<li>${x}</li>`).join("")}
+            </ul>
+          </div>
+        </div>
+
+        <div class="hr"></div>
+
+        <div class="grid" style="grid-template-columns:repeat(2,minmax(0,1fr));gap:12px">
+          <div>
+            <div class="muted" style="font-size:12px;margin-bottom:6px">Itens caros vs média</div>
+            ${priceyItems.length
+              ? `<ul style="margin:0;padding-left:16px">
+                  ${priceyItems.map((x) => `<li>${x}</li>`).join("")}
+                </ul>`
+              : `<div class="muted" style="font-size:12px">Sem alerta</div>`}
+          </div>
+          <div>
+            <div class="muted" style="font-size:12px;margin-bottom:6px">Itens duplicados</div>
+            ${dupes.length
+              ? `<ul style="margin:0;padding-left:16px">
+                  ${dupes.map((x) => `<li>${x}</li>`).join("")}
+                </ul>`
+              : `<div class="muted" style="font-size:12px">Nenhum duplicado</div>`}
+          </div>
+        </div>
+
+        ${zeroPrice.length
+          ? `
+        <div class="hr"></div>
+        <div>
+          <div class="muted" style="font-size:12px;margin-bottom:6px">Itens com preço zerado</div>
+          <ul style="margin:0;padding-left:16px">
+            ${zeroPrice.map((x) => `<li>${x}</li>`).join("")}
+          </ul>
+        </div>
+        `
+          : ""}
+      </div>
+
       <div class="card section">
         <h3>Distribuição de preços (unitário)</h3>
         <div class="muted" style="font-size:12px;margin-top:4px">Até 10 • 10–50 • Acima 50</div>

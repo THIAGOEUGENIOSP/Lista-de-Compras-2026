@@ -230,6 +230,115 @@ function computeByCollaborator(items) {
     .sort((a, b) => b.gasto_comprado - a.gasto_comprado);
 }
 
+function normalizeText(value) {
+  return String(value || "")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
+}
+
+function computeEconomyInsights(items) {
+  const keywords = [
+    "refrigerante",
+    "coca",
+    "guarana",
+    "suco",
+    "cerveja",
+    "vinho",
+    "energetico",
+    "doce",
+    "chocolate",
+    "bala",
+    "salgadinho",
+    "batata",
+    "sorvete",
+    "bolo",
+    "pizza",
+    "hamburguer",
+    "lanche",
+    "snack",
+  ];
+
+  const normalizedKeywords = keywords.map(normalizeText);
+  const totals = items.map((it) => totalOfItem(it));
+  const totalValue = totals.reduce((a, b) => a + b, 0);
+  const avgTotal = items.length ? totalValue / items.length : 0;
+
+  const isWaste = (it) => {
+    const n = normalizeText(it.nome);
+    const c = normalizeText(it.categoria);
+    return normalizedKeywords.some((k) => n.includes(k) || c.includes(k));
+  };
+
+  const wasteItems = items
+    .filter(isWaste)
+    .map((it) => ({
+      name: it.nome || "—",
+      total: totalOfItem(it),
+    }))
+    .sort((a, b) => b.total - a.total);
+
+  const wasteTotal = wasteItems.reduce((a, b) => a + b.total, 0);
+  const wastePct = totalValue ? Math.round((wasteTotal / totalValue) * 100) : 0;
+
+  const priceyItems = items
+    .map((it) => ({
+      name: it.nome || "—",
+      total: totalOfItem(it),
+      status: it.status,
+    }))
+    .filter((it) => it.total >= Math.max(10, avgTotal * 1.5))
+    .sort((a, b) => b.total - a.total)
+    .slice(0, 5);
+
+  const dupesMap = new Map();
+  items.forEach((it) => {
+    const key = normalizeNameKey(it.nome);
+    if (!key) return;
+    const row = dupesMap.get(key) || { count: 0, label: it.nome };
+    row.count += 1;
+    row.label = it.nome;
+    dupesMap.set(key, row);
+  });
+  const duplicates = Array.from(dupesMap.values())
+    .filter((r) => r.count > 1)
+    .map((r) => `${r.label} (${r.count}x)`)
+    .slice(0, 5);
+
+  const zeroPrice = items
+    .filter((it) => Number(it.valor_unitario || 0) === 0)
+    .map((it) => it.nome || "—")
+    .slice(0, 5);
+
+  const tips = [];
+  if (wastePct >= 20) {
+    tips.push("Supérfluos acima de 20% do total — revise prioridades.");
+  } else if (wastePct >= 10) {
+    tips.push("Supérfluos relevantes — considere reduzir.");
+  } else {
+    tips.push("Supérfluos sob controle.");
+  }
+  if (priceyItems.length) {
+    tips.push("Há itens acima da média — compare preços ou marcas.");
+  }
+  if (duplicates.length) {
+    tips.push("Itens duplicados — pode consolidar quantidades.");
+  }
+  if (zeroPrice.length) {
+    tips.push("Itens com preço zerado — revise para não distorcer o total.");
+  }
+
+  return {
+    wasteTotalLabel: brl(wasteTotal),
+    wastePctLabel: `${wastePct}% do total`,
+    wasteItems: wasteItems.slice(0, 5).map((x) => `${x.name} • ${brl(x.total)}`),
+    priceyItems: priceyItems.map((x) => `${x.name} • ${brl(x.total)}`),
+    duplicates,
+    zeroPrice,
+    tips,
+  };
+}
+
 function computePriceBuckets(items) {
   const buckets = { at10: 0, between10and50: 0, above50: 0 };
   for (const it of items) {
@@ -368,6 +477,7 @@ function renderApp() {
   const filtered = applyFilters();
   const kpis = computeKPIs(state.items);
   const byCollab = computeByCollaborator(state.items);
+  const economy = computeEconomyInsights(state.items);
 
   root.innerHTML = `
     <div class="container">
@@ -387,7 +497,7 @@ function renderApp() {
       </div>
 
       <div style="margin-top:12px">
-        ${renderAnalytics()}
+        ${renderAnalytics(economy)}
       </div>
 
       ${renderItemFormModal()}

@@ -117,10 +117,15 @@ function renderTableBlock({ title, items, showCategory, category }) {
     "Geral";
   const meta = getCategoryMeta(categoryLabel);
   return `
-  <div class="card section only-desktop category-block ${meta.className}" style="margin-top:12px">
-    <div class="row space-between">
-      <h2><span class="cat-icon">${meta.icon}</span>${title}</h2>
-      <div class="muted" style="font-size:12px">${items.length} item(ns)</div>
+  <div class="card section only-desktop" style="margin-top:12px">
+    <div class="category-block category-pill-head ${meta.className}">
+      <div class="category-head">
+        <div class="category-title-wrap">
+          <span class="cat-dot" aria-hidden="true">${meta.icon}</span>
+          <h2 class="cat-title">${title}</h2>
+        </div>
+        <div class="cat-count">${items.length} item(ns)</div>
+      </div>
     </div>
 
     <div class="table-wrap" style="margin-top:10px">
@@ -311,9 +316,12 @@ export function renderItemMobileList(items, sortKey) {
 
     const header = `
       <div class="card section only-mobile category-block ${meta.className}" style="margin-top:12px">
-        <div class="row space-between">
-          <h2><span class="cat-icon">${meta.icon}</span>${title}</h2>
-          <div class="muted" style="font-size:12px">${blockItems.length} item(ns)</div>
+        <div class="category-head">
+          <div class="category-title-wrap">
+            <span class="cat-dot" aria-hidden="true">${meta.icon}</span>
+            <h2 class="cat-title">${title}</h2>
+          </div>
+          <div class="cat-count">${blockItems.length} item(ns)</div>
         </div>
       </div>
     `;

@@ -1,4 +1,20 @@
 import { formatQuantidade, isPesoCategoria } from "../utils/format.js";
+import {
+  getShoppingCategories,
+  normalizeShoppingCategory,
+} from "../utils/shoppingCategories.js";
+
+function buildCategoryOptions() {
+  return getShoppingCategories()
+    .map((category) => {
+      const label =
+        category === "Churrasco"
+          ? "Churrasco (Itens por peso: carnes, queijos e etc.)"
+          : category;
+      return `<option value="${category}">${label}</option>`;
+    })
+    .join("");
+}
 
 export function renderItemFormModal() {
   return `
@@ -43,9 +59,9 @@ export function renderItemFormModal() {
         <div>
           <label class="muted" style="font-size:12px">Categoria</label>
           <select name="categoria">
-            <option value="Geral">Geral</option>
-            <option value="Churrasco">Itens por peso (Carnes, queijos e etc.)</option>
+            ${buildCategoryOptions()}
           </select>
+          <div class="muted" style="font-size:12px;margin-top:4px" id="categoriaAutoHint"></div>
         </div>
 
         <div>
@@ -105,6 +121,8 @@ export function openModal({ title, subtitle, hint, data }) {
 
   const form = document.getElementById("itemForm");
   form.reset();
+  form.dataset.categoryManual = "false";
+  form.dataset.autoCategory = "";
 
   if (data) {
     form.nome.value = data.nome ?? "";
@@ -117,13 +135,14 @@ export function openModal({ title, subtitle, hint, data }) {
       currency: "BRL",
     }).format(data.valor_unitario ?? 0);
 
-    ensureOption(form.categoria, data.categoria);
-    form.categoria.value = data.categoria ?? "Geral";
-    form.tipo.value = isPesoCategoria(data.categoria) ? "PESO" : "UNIDADE";
+    const normalizedCategory = normalizeShoppingCategory(data.categoria);
+    ensureOption(form.categoria, normalizedCategory);
+    form.categoria.value = normalizedCategory;
+    form.tipo.value = isPesoCategoria(normalizedCategory) ? "PESO" : "UNIDADE";
 
     form.id.value = data.id ?? "";
   } else {
-    form.categoria.value = "Geral";
+    form.categoria.value = normalizeShoppingCategory("Geral");
     form.tipo.value = "UNIDADE";
     form.id.value = "";
     form.quantidade.value = "";
@@ -139,6 +158,7 @@ export function openModal({ title, subtitle, hint, data }) {
     : "Ex: 2 ou 2,5";
 
   form.status.value = data?.status ?? "PENDENTE";
+  form.dispatchEvent(new CustomEvent("shopping:modal-opened"));
 
   form.nome.focus();
 }

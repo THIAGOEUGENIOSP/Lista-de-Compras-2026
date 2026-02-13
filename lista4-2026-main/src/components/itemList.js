@@ -1,5 +1,10 @@
 // src/components/itemList.js
 import { brl, formatQuantidade, isPesoCategoria } from "../utils/format.js";
+import {
+  classifyShoppingCategory,
+  groupShoppingItemsByCategory,
+  normalizeShoppingCategory,
+} from "../utils/shoppingCategories.js";
 
 function collabName(it) {
   return (
@@ -11,8 +16,40 @@ function collabName(it) {
   );
 }
 
+function collaboratorOptions(state) {
+  const names = Array.from(
+    new Set((state?.items || []).map((it) => collabName(it)).filter(Boolean)),
+  ).sort((a, b) =>
+    a.localeCompare(b, "pt-BR", {
+      sensitivity: "base",
+    }),
+  );
+
+  const selected = String(state?.filterCollaborator || "ALL");
+  if (selected !== "ALL" && !names.includes(selected)) {
+    names.unshift(selected);
+  }
+
+  return names;
+}
+
+function escapeHtml(value) {
+  return String(value || "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
 function isChurrasco(it) {
-  return isPesoCategoria(it?.categoria);
+  return isPesoCategoria(normalizeShoppingCategory(it?.categoria));
+}
+
+function displayGeneralCategory(it) {
+  const normalized = normalizeShoppingCategory(it?.categoria);
+  if (normalized !== "Geral") return normalized;
+  return classifyShoppingCategory(it?.nome || "");
 }
 
 function totalOfItem(it) {
@@ -125,7 +162,6 @@ function renderTableBlock({ title, items, showCategory }) {
               <tr class="${isBought ? "row-bought" : ""}">
                 <td>
                   <div class="item-name" style="font-weight:700">${it.nome}</div>
-                  
                 </td>
 
                 <td style="min-width:140px">
@@ -173,6 +209,7 @@ function renderTableBlock({ title, items, showCategory }) {
 }
 
 export function renderItemListControls(state) {
+  const names = collaboratorOptions(state);
   return `
   <div class="card section">
     <div class="row space-between">
@@ -187,6 +224,16 @@ export function renderItemListControls(state) {
       </div>
 
       <div class="row">
+        <select id="collaboratorFilter" title="Filtrar por colaborador">
+          <option value="ALL" ${state.filterCollaborator === "ALL" ? "selected" : ""}>Todos usuários</option>
+          ${names
+            .map(
+              (name) =>
+                `<option value="${escapeHtml(name)}" ${state.filterCollaborator === name ? "selected" : ""}>${escapeHtml(name)}</option>`,
+            )
+            .join("")}
+        </select>
+
         <input
           class="input"
           id="searchInput"
@@ -208,18 +255,28 @@ export function renderItemListControls(state) {
 
 export function renderItemTable(items, sortKey) {
   const churrasco = sortItems(items.filter(isChurrasco), sortKey);
-  const others = sortItems(
+  const groupedOthers = groupShoppingItemsByCategory(
     items.filter((it) => !isChurrasco(it)),
-    sortKey,
-  );
+  ).map((group) => ({
+    ...group,
+    items: sortItems(group.items, sortKey),
+  }));
+
+  const generalBlocks = groupedOthers.length
+    ? groupedOthers
+    : [{ category: "Geral", items: [] }];
 
   return `
     <div class="table-list-wrap">
-      ${renderTableBlock({
-        title: "Lista de Compras",
-        items: others,
-        showCategory: true,
-      })}
+      ${generalBlocks
+        .map((group) =>
+          renderTableBlock({
+            title: `Lista de Compras • ${group.category}`,
+            items: group.items,
+            showCategory: true,
+          }),
+        )
+        .join("")}
       ${renderTableBlock({
         title: "Itens por peso (Carnes, queijos e etc.)",
         items: churrasco,
@@ -231,10 +288,16 @@ export function renderItemTable(items, sortKey) {
 
 export function renderItemMobileList(items, sortKey) {
   const churrasco = sortItems(items.filter(isChurrasco), sortKey);
-  const others = sortItems(
+  const groupedOthers = groupShoppingItemsByCategory(
     items.filter((it) => !isChurrasco(it)),
-    sortKey,
-  );
+  ).map((group) => ({
+    ...group,
+    items: sortItems(group.items, sortKey),
+  }));
+
+  const generalBlocks = groupedOthers.length
+    ? groupedOthers
+    : [{ category: "Geral", items: [] }];
 
   const renderMobileBlock = (title, blockItems, showCategory) => {
     const { qtd, total } = sumTotals(blockItems);
@@ -263,8 +326,11 @@ export function renderItemMobileList(items, sortKey) {
               ? formatQuantidade(it.quantidade, it.categoria)
               : `${Number(it.quantidade || 0).toLocaleString("pt-BR")} un`;
 
+            const normalizedCategory = displayGeneralCategory(it);
             const categoria =
-              it.categoria && it.categoria !== "Geral" ? it.categoria : "";
+              normalizedCategory && normalizedCategory !== "Geral"
+                ? normalizedCategory
+                : "";
 
             return `
             <div class="mcard ${isBought ? "row-bought" : ""}">
@@ -344,7 +410,15 @@ export function renderItemMobileList(items, sortKey) {
 
   return `
     <div class="mobile-list-wrap">
-      ${renderMobileBlock("Lista de Compras", others, true)}
+      ${generalBlocks
+        .map((group) =>
+          renderMobileBlock(
+            `Lista de Compras • ${group.category}`,
+            group.items,
+            true,
+          ),
+        )
+        .join("")}
       ${renderMobileBlock("Itens por peso (Carnes, queijos e etc.)", churrasco, false)}
     </div>
   `;

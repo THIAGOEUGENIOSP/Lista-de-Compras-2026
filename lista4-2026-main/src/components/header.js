@@ -1,4 +1,17 @@
-export function renderHeader({ periodLabel, userName, theme }) {
+export function renderHeader({
+  periodLabel,
+  userName,
+  theme,
+  deletedCount = 0,
+  softDeleteEnabled = false,
+}) {
+  const restoreLabel = softDeleteEnabled
+    ? `Restaurar lista do mês (${deletedCount})`
+    : "Restaurar indisponível (sem migração)";
+  const purgeLabel = softDeleteEnabled
+    ? `Apagar definitivo da lixeira (${deletedCount})`
+    : "Exclusão definitiva indisponível";
+
   return `
   <div class="card section">
     <div class="row space-between">
@@ -30,7 +43,9 @@ export function renderHeader({ periodLabel, userName, theme }) {
     <div class="row">
       <button class="btn warn" data-action="zero-prices">Zerar preços do mês</button>
       <button class="btn primary" data-action="copy-next">Copiar lista p/ próximo mês</button>
-      <button class="btn danger" data-action="delete-month">Apagar lista do mês</button>
+      <button class="btn danger" data-action="delete-month">Mover lista do mês p/ lixeira</button>
+      <button class="btn" data-action="restore-month" ${deletedCount > 0 && softDeleteEnabled ? "" : "disabled"}>${restoreLabel}</button>
+      <button class="btn danger" data-action="purge-month" ${deletedCount > 0 && softDeleteEnabled ? "" : "disabled"}>${purgeLabel}</button>
       <span class="muted" style="font-size:12px">* Operações afetam apenas o período selecionado.</span>
     </div>
   </div>

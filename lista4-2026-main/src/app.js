@@ -3,6 +3,10 @@ import { sb } from "./config/supabase.js";
 import { getTheme, setTheme, qs, qsa } from "./utils/ui.js";
 import { brl, num, formatQuantidade, isPesoCategoria } from "./utils/format.js";
 import { addMonths, monthKey, periodName } from "./utils/period.js";
+import {
+  classifyShoppingCategory,
+  normalizeShoppingCategory,
+} from "./utils/shoppingCategories.js";
 
 import { mountToast } from "./components/toast.js";
 import { renderHeader } from "./components/header.js";
@@ -25,6 +29,7 @@ import {
 } from "./components/analytics.js";
 
 import { ensurePeriod, listRecentPeriods } from "./services/periods.js";
+import { getErrorMessage } from "./services/db.js";
 import {
   fetchItems,
   addItem,
@@ -32,6 +37,10 @@ import {
   deleteItem,
   bulkZeroPrices,
   bulkDeleteByPeriod,
+  restoreDeletedByPeriod,
+  countDeletedByPeriod,
+  purgeDeletedByPeriod,
+  getItemsCapabilities,
   copyItemsToPeriod,
 } from "./services/items.js";
 
@@ -55,8 +64,11 @@ const state = {
   items: [],
 
   filterStatus: "ALL",
+  filterCollaborator: "ALL",
   searchText: "",
   sortKey: "name_asc",
+  deletedCount: 0,
+  softDeleteEnabled: false,
 
   charts: null,
   delegatedBound: false,
@@ -71,6 +83,7 @@ function normalizeItem(it) {
     ...it,
     quantidade: Number(it.quantidade || 0),
     valor_unitario: num(it.valor_unitario ?? 0),
+    categoria: normalizeShoppingCategory(it?.categoria),
   };
 }
 
@@ -102,6 +115,19 @@ function totalOfItem(it) {
   const qtd = Number(it.quantidade || 0);
   const unit = num(it.valor_unitario || 0);
   return isPesoCategoria(it.categoria) ? unit : qtd * unit;
+}
+
+function getAdminDeletePin() {
+  const fromWindow = window?.APP_ADMIN_PIN ?? window?.__APP_ADMIN_PIN__;
+  const fromStorage = localStorage.getItem("adminDeletePin");
+  return String(fromWindow || fromStorage || "1234");
+}
+
+function toastError(title, err, fallback) {
+  toast.show({
+    title,
+    message: getErrorMessage(err?.cause || err, fallback),
+  });
 }
 
 function parseQuantidade(raw, categoria) {
@@ -363,6 +389,12 @@ function applyFilters() {
     arr = arr.filter((it) => it.status === state.filterStatus);
   }
 
+  if (state.filterCollaborator !== "ALL") {
+    arr = arr.filter(
+      (it) => getCollaboratorName(it) === String(state.filterCollaborator),
+    );
+  }
+
   const q = (state.searchText || "").trim().toLowerCase();
   if (q) {
     arr = arr.filter((it) => (it.nome || "").toLowerCase().includes(q));
@@ -439,8 +471,18 @@ function renderNameGate() {
 
 async function loadDataForPeriod() {
   state.currentPeriod = await ensurePeriod(state.cursorDate);
+  const caps = await getItemsCapabilities();
+  state.softDeleteEnabled = Boolean(caps.softDelete);
+
   const raw = await fetchItems(state.currentPeriod.id);
   state.items = (raw || []).map(normalizeItem);
+  state.deletedCount = await countDeletedByPeriod(state.currentPeriod.id);
+
+  const collabFilter = String(state.filterCollaborator || "ALL");
+  if (collabFilter !== "ALL") {
+    const exists = state.items.some((it) => getCollaboratorName(it) === collabFilter);
+    if (!exists) state.filterCollaborator = "ALL";
+  }
 }
 
 async function computeMonthlySeries() {
@@ -481,7 +523,13 @@ function renderApp() {
 
   root.innerHTML = `
     <div class="container">
-      ${renderHeader({ periodLabel, userName, theme: state.theme })}
+      ${renderHeader({
+        periodLabel,
+        userName,
+        theme: state.theme,
+        deletedCount: state.deletedCount,
+        softDeleteEnabled: state.softDeleteEnabled,
+      })}
 
       <div style="margin-top:12px">
         ${renderDashboard(kpis)}
@@ -535,10 +583,7 @@ function renderApp() {
         statusCounts,
       });
     } catch (err) {
-      toast.show({
-        title: "Charts",
-        message: err.message || "Falha ao montar gráficos",
-      });
+      toastError("Charts", err, "Falha ao montar gráficos");
     }
   })();
 
@@ -558,6 +603,16 @@ function bindPerRenderInputs() {
       renderApp();
     });
   });
+
+  // busca (sem travar)
+  const collaboratorFilter = qs("#collaboratorFilter");
+  if (collaboratorFilter) {
+    collaboratorFilter.addEventListener("change", () => {
+      state.filterCollaborator = collaboratorFilter.value || "ALL";
+      rerenderTableOnly();
+      rerenderListOnly();
+    });
+  }
 
   // busca (sem travar)
   const s = qs("#searchInput");
@@ -581,13 +636,63 @@ function bindPerRenderInputs() {
   // submit modal form
   const form = qs("#itemForm");
   if (form) {
+    const nameInput = form.querySelector('input[name="nome"]');
     const qtdInput = form.querySelector('input[name="quantidade"]');
     const categoriaSelect = form.querySelector('select[name="categoria"]');
     const tipoSelect = form.querySelector('select[name="tipo"]');
+    const categoriaAutoHint = form.querySelector("#categoriaAutoHint");
+    let autoUpdatingCategory = false;
+
+    const setAutoHint = (category) => {
+      if (!categoriaAutoHint) return;
+      if (!category || category === "Churrasco") {
+        categoriaAutoHint.textContent = "";
+        return;
+      }
+      categoriaAutoHint.textContent = `Categoria automática: ${category}`;
+    };
+
+    const currentId = () =>
+      String(form.querySelector('input[name="id"]')?.value || "").trim();
+
+    const classifyCurrentName = () => classifyShoppingCategory(nameInput?.value || "");
+
+    const refreshCategorySuggestion = ({ applyAuto = true } = {}) => {
+      if (!categoriaSelect) return;
+
+      const selectedCategory = normalizeShoppingCategory(categoriaSelect.value);
+      const rawName = String(nameInput?.value || "").trim();
+      if (!rawName) {
+        form.dataset.autoCategory = "Geral";
+        setAutoHint("");
+        return;
+      }
+
+      const suggested = classifyCurrentName();
+      form.dataset.autoCategory = suggested;
+
+      if (selectedCategory === "Churrasco") {
+        setAutoHint("");
+        return;
+      }
+
+      setAutoHint(suggested);
+
+      const isEditing = Boolean(currentId());
+      const isManual = form.dataset.categoryManual === "true";
+      if (!applyAuto || isEditing || isManual) return;
+
+      autoUpdatingCategory = true;
+      categoriaSelect.value = suggested;
+      syncTipo();
+      autoUpdatingCategory = false;
+    };
 
     const syncTipo = () => {
       if (!categoriaSelect || !tipoSelect) return;
-      const isPeso = isPesoCategoria(categoriaSelect.value);
+      const normalizedCategory = normalizeShoppingCategory(categoriaSelect.value);
+      const isPeso = isPesoCategoria(normalizedCategory);
+      categoriaSelect.value = normalizedCategory;
       tipoSelect.value = isPeso ? "PESO" : "UNIDADE";
       if (qtdInput) {
         qtdInput.placeholder = isPeso ? "Ex: 1kg ou 0.5g" : "Ex: 2 ou 2,5";
@@ -595,9 +700,21 @@ function bindPerRenderInputs() {
     };
 
     if (categoriaSelect) {
-      categoriaSelect.addEventListener("change", syncTipo);
+      categoriaSelect.addEventListener("change", () => {
+        syncTipo();
+        if (!autoUpdatingCategory) {
+          form.dataset.categoryManual = "true";
+        }
+        refreshCategorySuggestion({ applyAuto: false });
+      });
       syncTipo();
     }
+    if (nameInput) {
+      nameInput.addEventListener("input", () => refreshCategorySuggestion());
+    }
+    form.addEventListener("shopping:modal-opened", () => {
+      refreshCategorySuggestion({ applyAuto: false });
+    });
 
     bindCurrencyInputs(form);
 
@@ -611,7 +728,7 @@ function bindPerRenderInputs() {
           nome: String(fd.get("nome") || "").trim(),
           quantidade: 0,
           valor_unitario: parseCurrencyBRL(fd.get("valor_unitario") || 0),
-          categoria: String(fd.get("categoria") || "Geral").trim() || "Geral",
+          categoria: normalizeShoppingCategory(fd.get("categoria") || "Geral"),
           status: String(fd.get("status") || "PENDENTE"),
         };
 
@@ -621,6 +738,31 @@ function bindPerRenderInputs() {
             message: "Informe o nome do item.",
           });
           return;
+        }
+
+        const autoCategory = classifyShoppingCategory(payload.nome);
+        const selectedCategory = normalizeShoppingCategory(payload.categoria);
+        const suggestedInForm = normalizeShoppingCategory(
+          form.dataset.autoCategory || autoCategory,
+        );
+        const isEditing = Boolean(String(id || "").trim());
+        const manualCategorySelected = form.dataset.categoryManual === "true";
+
+        if (selectedCategory !== "Churrasco") {
+          if (isEditing) {
+            payload.categoria =
+              selectedCategory === "Geral" ? autoCategory : selectedCategory;
+          } else {
+            const keepManualCategory =
+              manualCategorySelected &&
+              selectedCategory !== "Geral" &&
+              selectedCategory !== suggestedInForm;
+            payload.categoria = keepManualCategory
+              ? selectedCategory
+              : autoCategory;
+          }
+        } else {
+          payload.categoria = "Churrasco";
         }
 
         const isPeso = isPesoCategoria(payload.categoria);
@@ -677,10 +819,7 @@ function bindPerRenderInputs() {
         closeModal();
         renderApp();
       } catch (err) {
-        toast.show({
-          title: "Erro",
-          message: err.message || "Falha ao salvar item.",
-        });
+        toastError("Erro", err, "Falha ao salvar item.");
       }
     });
   }
@@ -772,11 +911,20 @@ function bindDelegatedEvents() {
 
       if (action === "delete") {
         const id = el.dataset.id;
-        if (!confirm("Excluir este item?")) return;
+        const deleteMsg = state.softDeleteEnabled
+          ? "Mover este item para a lixeira?"
+          : "Seu banco não tem lixeira. Excluir permanentemente este item?";
+        if (!confirm(deleteMsg)) return;
 
-        await deleteItem(id);
+        await deleteItem(id, state.collaboratorName, "Remoção individual");
         state.items = state.items.filter((x) => x.id !== id);
-        toast.show({ title: "Excluído", message: "Item removido." });
+        state.deletedCount = await countDeletedByPeriod(state.currentPeriod.id);
+        toast.show({
+          title: state.softDeleteEnabled ? "Lixeira" : "Exclusão permanente",
+          message: state.softDeleteEnabled
+            ? "Item movido para a lixeira."
+            : "Item removido permanentemente.",
+        });
         renderApp();
         return;
       }
@@ -884,7 +1032,7 @@ function bindDelegatedEvents() {
       if (action === "zero-prices") {
         if (!confirm(`Zerar preços de ${state.currentPeriod.nome}?`)) return;
 
-        await bulkZeroPrices(state.currentPeriod.id);
+        await bulkZeroPrices(state.currentPeriod.id, state.collaboratorName);
         state.items = state.items.map((it) =>
           normalizeItem({ ...it, valor_unitario: 0 }),
         );
@@ -894,12 +1042,149 @@ function bindDelegatedEvents() {
       }
 
       if (action === "delete-month") {
-        if (!confirm(`Apagar TODOS os itens de ${state.currentPeriod.nome}?`))
+        if (!state.softDeleteEnabled) {
+          toast.show({
+            title: "Lixeira indisponível",
+            message:
+              "Seu banco ainda não suporta lixeira. Aplique a migração de soft delete antes de usar essa ação.",
+          });
           return;
+        }
 
-        await bulkDeleteByPeriod(state.currentPeriod.id);
-        state.items = [];
-        toast.show({ title: "Ok", message: "Lista do mês apagada." });
+        const periodNameValue = String(state.currentPeriod?.nome || "").trim();
+        const expectedPhrase = `APAGAR ${periodNameValue}`;
+        const typedPhrase = prompt(
+          `Confirmação obrigatória.\nDigite exatamente:\n${expectedPhrase}`,
+        );
+        if (typedPhrase === null) {
+          toast.show({ title: "Cancelado", message: "Ação cancelada." });
+          return;
+        }
+        if (String(typedPhrase).trim() !== expectedPhrase) {
+          toast.show({
+            title: "Frase inválida",
+            message: "Confirmação não confere. Nada foi alterado.",
+          });
+          return;
+        }
+
+        const typedPin = prompt("Digite o PIN admin para continuar:");
+        if (typedPin === null) {
+          toast.show({ title: "Cancelado", message: "Ação cancelada." });
+          return;
+        }
+        if (String(typedPin).trim() !== getAdminDeletePin()) {
+          toast.show({
+            title: "PIN inválido",
+            message: "PIN incorreto. Nada foi alterado.",
+          });
+          return;
+        }
+
+        await bulkDeleteByPeriod(
+          state.currentPeriod.id,
+          state.collaboratorName,
+          `Lixeira mensal (${state.currentPeriod.nome})`,
+        );
+
+        await loadDataForPeriod();
+        toast.show({ title: "Lixeira", message: "Lista do mês movida para lixeira." });
+        renderApp();
+        return;
+      }
+
+      if (action === "restore-month") {
+        if (!state.softDeleteEnabled) {
+          toast.show({
+            title: "Restaurar indisponível",
+            message:
+              "Seu banco ainda não suporta restauração. Aplique a migração de soft delete.",
+          });
+          return;
+        }
+
+        const restored = await restoreDeletedByPeriod(
+          state.currentPeriod.id,
+          state.collaboratorName,
+        );
+        if (restored <= 0) {
+          toast.show({
+            title: "Restaurar",
+            message: "Nenhum item restaurado para este mês.",
+          });
+          return;
+        }
+        await loadDataForPeriod();
+        toast.show({
+          title: "Restaurado",
+          message: `${restored} item(ns) restaurado(s) da lixeira.`,
+        });
+        renderApp();
+        return;
+      }
+
+      if (action === "purge-month") {
+        if (!state.softDeleteEnabled) {
+          toast.show({
+            title: "Exclusão definitiva indisponível",
+            message:
+              "Seu banco ainda não suporta lixeira. Aplique a migração de soft delete.",
+          });
+          return;
+        }
+
+        if (state.deletedCount <= 0) {
+          toast.show({
+            title: "Lixeira vazia",
+            message: "Não há itens deletados para apagar definitivamente.",
+          });
+          return;
+        }
+
+        const periodNameValue = String(state.currentPeriod?.nome || "").trim();
+        const expectedPhrase = `APAGAR DEFINITIVO ${periodNameValue}`;
+        const typedPhrase = prompt(
+          `Ação irreversível.\nDigite exatamente:\n${expectedPhrase}`,
+        );
+        if (typedPhrase === null) {
+          toast.show({ title: "Cancelado", message: "Ação cancelada." });
+          return;
+        }
+        if (String(typedPhrase).trim() !== expectedPhrase) {
+          toast.show({
+            title: "Frase inválida",
+            message: "Confirmação não confere. Nada foi alterado.",
+          });
+          return;
+        }
+
+        const typedPin = prompt("Digite o PIN admin para exclusão definitiva:");
+        if (typedPin === null) {
+          toast.show({ title: "Cancelado", message: "Ação cancelada." });
+          return;
+        }
+        if (String(typedPin).trim() !== getAdminDeletePin()) {
+          toast.show({
+            title: "PIN inválido",
+            message: "PIN incorreto. Nada foi alterado.",
+          });
+          return;
+        }
+
+        const purged = await purgeDeletedByPeriod(
+          state.currentPeriod.id,
+          state.collaboratorName,
+          `Limpeza definitiva (${state.currentPeriod.nome})`,
+        );
+
+        await loadDataForPeriod();
+        toast.show({
+          title: "Exclusão definitiva",
+          message:
+            purged > 0
+              ? `${purged} item(ns) removido(s) definitivamente.`
+              : "Nenhum item foi removido definitivamente.",
+        });
         renderApp();
         return;
       }
@@ -926,7 +1211,7 @@ function bindDelegatedEvents() {
         return;
       }
     } catch (err) {
-      toast.show({ title: "Erro", message: err.message || "Algo deu errado." });
+      toastError("Erro", err, "Algo deu errado.");
     }
   });
 }
@@ -945,6 +1230,6 @@ async function boot() {
 
 boot().catch((err) => {
   root.innerHTML = `<div class="container"><div class="card section">
-    <h1>Erro ao iniciar</h1><div class="muted" style="margin-top:8px">${err.message || err}</div>
+    <h1>Erro ao iniciar</h1><div class="muted" style="margin-top:8px">${getErrorMessage(err?.cause || err, "Falha ao iniciar aplicação.")}</div>
   </div></div>`;
 });

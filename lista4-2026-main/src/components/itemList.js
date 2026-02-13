@@ -1,7 +1,7 @@
 // src/components/itemList.js
 import { brl, formatQuantidade, isPesoCategoria } from "../utils/format.js";
 import {
-  classifyShoppingCategory,
+  getCategoryMeta,
   groupShoppingItemsByCategory,
   normalizeShoppingCategory,
 } from "../utils/shoppingCategories.js";
@@ -44,12 +44,6 @@ function escapeHtml(value) {
 
 function isChurrasco(it) {
   return isPesoCategoria(normalizeShoppingCategory(it?.categoria));
-}
-
-function displayGeneralCategory(it) {
-  const normalized = normalizeShoppingCategory(it?.categoria);
-  if (normalized !== "Geral") return normalized;
-  return classifyShoppingCategory(it?.nome || "");
 }
 
 function totalOfItem(it) {
@@ -116,11 +110,16 @@ function renderSummaryRow(items, forChurrasco) {
   `;
 }
 
-function renderTableBlock({ title, items, showCategory }) {
+function renderTableBlock({ title, items, showCategory, category }) {
+  const categoryLabel =
+    normalizeShoppingCategory(category) ||
+    String(title || "").split("•")[1]?.trim() ||
+    "Geral";
+  const meta = getCategoryMeta(categoryLabel);
   return `
-  <div class="card section only-desktop" style="margin-top:12px">
+  <div class="card section only-desktop category-block ${meta.className}" style="margin-top:12px">
     <div class="row space-between">
-      <h2>${title}</h2>
+      <h2><span class="cat-icon">${meta.icon}</span>${title}</h2>
       <div class="muted" style="font-size:12px">${items.length} item(ns)</div>
     </div>
 
@@ -159,7 +158,7 @@ function renderTableBlock({ title, items, showCategory }) {
                 : it.quantidade;
 
               return `
-              <tr class="${isBought ? "row-bought" : ""}">
+              <tr class="${isBought ? "row-bought" : "row-pending"}">
                 <td>
                   <div class="item-name" style="font-weight:700">${it.nome}</div>
                 </td>
@@ -269,18 +268,21 @@ export function renderItemTable(items, sortKey) {
   return `
     <div class="table-list-wrap">
       ${generalBlocks
-        .map((group) =>
-          renderTableBlock({
+        .map((group) => {
+          const meta = getCategoryMeta(group.category);
+          return renderTableBlock({
             title: `Lista de Compras • ${group.category}`,
             items: group.items,
             showCategory: true,
-          }),
-        )
+            category: group.category,
+          });
+        })
         .join("")}
       ${renderTableBlock({
         title: "Itens por peso (Carnes, queijos e etc.)",
         items: churrasco,
         showCategory: false,
+        category: "Churrasco",
       })}
     </div>
   `;
@@ -299,24 +301,27 @@ export function renderItemMobileList(items, sortKey) {
     ? groupedOthers
     : [{ category: "Geral", items: [] }];
 
-  const renderMobileBlock = (title, blockItems, showCategory) => {
+  const renderMobileBlock = (title, blockItems, showCategory, categoryLabel) => {
+    const safeCategory = normalizeShoppingCategory(categoryLabel || "Geral");
+    const meta = getCategoryMeta(safeCategory);
     const { qtd, total } = sumTotals(blockItems);
     const qtdLabel = showCategory
       ? `${qtd.toLocaleString("pt-BR")} un`
       : formatQuantidade(qtd, "Churrasco");
 
     const header = `
-      <div class="card section only-mobile" style="margin-top:12px">
+      <div class="card section only-mobile category-block ${meta.className}" style="margin-top:12px">
         <div class="row space-between">
-          <h2>${title}</h2>
+          <h2><span class="cat-icon">${meta.icon}</span>${title}</h2>
           <div class="muted" style="font-size:12px">${blockItems.length} item(ns)</div>
         </div>
       </div>
     `;
 
     return `
-      ${header}
-      <div class="mobile-list" aria-label="Lista mobile ${title}">
+      <div class="category-section ${meta.className}">
+        ${header}
+        <div class="mobile-list ${meta.className}" aria-label="Lista mobile ${title}">
         ${blockItems
           .map((it) => {
             const totalItem = totalOfItem(it);
@@ -326,25 +331,21 @@ export function renderItemMobileList(items, sortKey) {
               ? formatQuantidade(it.quantidade, it.categoria)
               : `${Number(it.quantidade || 0).toLocaleString("pt-BR")} un`;
 
-            const normalizedCategory = displayGeneralCategory(it);
-            const categoria =
-              normalizedCategory && normalizedCategory !== "Geral"
-                ? normalizedCategory
-                : "";
-
             return `
-            <div class="mcard ${isBought ? "row-bought" : ""}">
+            <div class="mcard ${isBought ? "row-bought" : "row-pending"}">
               <div class="mcard-inner">
                 <div class="mcard-header">
                   <div class="mname">${it.nome}</div>
                   <div class="mtotal">
                     <div class="label">Total</div>
                     <div class="value">${brl(totalItem)}</div>
+                    <div class="mstatus ${isBought ? "bought" : "pending"}">
+                      ${isBought ? "Comprado" : "Pendente"}
+                    </div>
                   </div>
                 </div>
 
                 <div class="mmeta">
-                  ${showCategory && categoria ? `<span>${categoria}</span>` : ""}
                   <span>Por: <b>${collabName(it)}</b></span>
                 </div>
 
@@ -404,6 +405,7 @@ export function renderItemMobileList(items, sortKey) {
             </div>
           </div>
         </div>
+        </div>
       </div>
     `;
   };
@@ -416,10 +418,16 @@ export function renderItemMobileList(items, sortKey) {
             `Lista de Compras • ${group.category}`,
             group.items,
             true,
+            group.category,
           ),
         )
         .join("")}
-      ${renderMobileBlock("Itens por peso (Carnes, queijos e etc.)", churrasco, false)}
+      ${renderMobileBlock(
+        "Itens por peso (Carnes, queijos e etc.)",
+        churrasco,
+        false,
+        "Churrasco",
+      )}
     </div>
   `;
 }

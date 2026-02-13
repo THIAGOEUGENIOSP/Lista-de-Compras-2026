@@ -21,6 +21,112 @@
   --shadow: 0 10px 30px rgba(17,24,39,.08);
 }
 
+.category-block{
+  --cat-accent: #94a3b8;
+  --cat-pending-bg: rgba(148,163,184,.10);
+  --cat-pending-border: rgba(148,163,184,.35);
+  --cat-bought-bg: rgba(148,163,184,.22);
+  --cat-bought-border: rgba(148,163,184,.62);
+  background-image: none;
+}
+.cat-icon{
+  display: inline-flex;
+  width: 18px;
+  margin-right: 6px;
+  align-items: center;
+  justify-content: center;
+}
+
+.cat-clean{
+  --cat-accent: #22c55e;
+  --cat-pending-bg: rgba(34,197,94,.12);
+  --cat-pending-border: rgba(34,197,94,.38);
+  --cat-bought-bg: rgba(34,197,94,.24);
+  --cat-bought-border: rgba(34,197,94,.66);
+}
+.cat-bakery{
+  --cat-accent: #f59e0b;
+  --cat-pending-bg: rgba(245,158,11,.12);
+  --cat-pending-border: rgba(245,158,11,.38);
+  --cat-bought-bg: rgba(245,158,11,.24);
+  --cat-bought-border: rgba(245,158,11,.66);
+}
+.cat-produce{
+  --cat-accent: #84cc16;
+  --cat-pending-bg: rgba(132,204,22,.12);
+  --cat-pending-border: rgba(132,204,22,.38);
+  --cat-bought-bg: rgba(132,204,22,.24);
+  --cat-bought-border: rgba(132,204,22,.66);
+}
+.cat-drinks{
+  --cat-accent: #38bdf8;
+  --cat-pending-bg: rgba(56,189,248,.12);
+  --cat-pending-border: rgba(56,189,248,.38);
+  --cat-bought-bg: rgba(56,189,248,.24);
+  --cat-bought-border: rgba(56,189,248,.66);
+}
+.cat-grocery{
+  --cat-accent: #a78bfa;
+  --cat-pending-bg: rgba(167,139,250,.12);
+  --cat-pending-border: rgba(167,139,250,.38);
+  --cat-bought-bg: rgba(167,139,250,.24);
+  --cat-bought-border: rgba(167,139,250,.66);
+}
+.cat-protein{
+  --cat-accent: #f97316;
+  --cat-pending-bg: rgba(249,115,22,.12);
+  --cat-pending-border: rgba(249,115,22,.38);
+  --cat-bought-bg: rgba(249,115,22,.24);
+  --cat-bought-border: rgba(249,115,22,.66);
+}
+.cat-general{
+  --cat-accent: #9ca3af;
+  --cat-pending-bg: rgba(156,163,175,.10);
+  --cat-pending-border: rgba(156,163,175,.35);
+  --cat-bought-bg: rgba(156,163,175,.22);
+  --cat-bought-border: rgba(156,163,175,.62);
+}
+.cat-churrasco{
+  --cat-accent: #ef4444;
+  --cat-pending-bg: rgba(239,68,68,.12);
+  --cat-pending-border: rgba(239,68,68,.38);
+  --cat-bought-bg: rgba(239,68,68,.24);
+  --cat-bought-border: rgba(239,68,68,.66);
+}
+
+[data-theme="light"] .cat-clean{
+  --cat-pending-bg: rgba(34,197,94,.16);
+  --cat-bought-bg: rgba(34,197,94,.30);
+}
+[data-theme="light"] .cat-bakery{
+  --cat-pending-bg: rgba(245,158,11,.16);
+  --cat-bought-bg: rgba(245,158,11,.30);
+}
+[data-theme="light"] .cat-produce{
+  --cat-pending-bg: rgba(132,204,22,.16);
+  --cat-bought-bg: rgba(132,204,22,.30);
+}
+[data-theme="light"] .cat-drinks{
+  --cat-pending-bg: rgba(56,189,248,.16);
+  --cat-bought-bg: rgba(56,189,248,.30);
+}
+[data-theme="light"] .cat-grocery{
+  --cat-pending-bg: rgba(167,139,250,.16);
+  --cat-bought-bg: rgba(167,139,250,.30);
+}
+[data-theme="light"] .cat-protein{
+  --cat-pending-bg: rgba(249,115,22,.16);
+  --cat-bought-bg: rgba(249,115,22,.30);
+}
+[data-theme="light"] .cat-general{
+  --cat-pending-bg: rgba(156,163,175,.14);
+  --cat-bought-bg: rgba(156,163,175,.28);
+}
+[data-theme="light"] .cat-churrasco{
+  --cat-pending-bg: rgba(239,68,68,.16);
+  --cat-bought-bg: rgba(239,68,68,.30);
+}
+
 *{ box-sizing: border-box; }
 html,body{ height:100%; }
 body{
@@ -448,6 +554,15 @@ tr.row-bought .badge{
  .mobile-list{ display:grid; gap:12px; margin-top:10px; }
  .only-mobile{ display:block; }
   .only-desktop{ display:none; }
+  .only-mobile.category-block{
+    padding: 10px 12px;
+    border-radius: 12px;
+    border: 1px solid var(--cat-pending-border);
+    background: var(--cat-pending-bg);
+  }
+  .only-mobile.category-block h2{
+    font-size: 15px;
+  }
   /* iOS: evita zoom automático ao focar inputs */
   .input, select, textarea{
     font-size: 16px;
@@ -465,7 +580,7 @@ tr.row-bought .badge{
    border-style: dashed;
    opacity: .95;
  }
- .mcard-inner{ padding: 12px; }
+ .mcard-inner{ padding: 10px; }
  .mcard-header{
    display: flex;
    align-items: flex-start;
@@ -486,16 +601,19 @@ tr.row-bought .badge{
    flex: 1;
  }
  .mmeta{
-   margin-top: 4px;
+   margin-top: 2px;
    font-size: 12px;
    color: var(--muted);
    display:flex;
    flex-wrap: wrap;
    gap: 8px;
  }
+ .mmeta b{ color: var(--text); }
  .mtotal{
+   position: relative; /* ancora status textual logo abaixo do total */
    text-align:right;
-   min-width: 65px;
+   min-width: 88px;
+   padding-bottom: 16px; /* reserva espaço para status sem esticar demais */
  }
  .mtotal .label{
    font-size: 10px;
@@ -507,19 +625,53 @@ tr.row-bought .badge{
    font-weight: 900;
    line-height: 1;
  }
+ .mstatus{
+   position: absolute;
+   right: 0;
+   top: calc(100% - 1px);
+   display: inline-flex;
+   align-items: center;
+   justify-content: center;
+   min-width: 74px;
+   padding: 2px 8px;
+   border-radius: 999px;
+   font-size: 10px;
+   font-weight: 700;
+   line-height: 1.2;
+   border: 1px solid var(--border);
+   background: rgba(255,255,255,.05);
+   color: var(--text);
+   white-space: nowrap;
+ }
+ .mstatus.pending{
+   border-color: rgba(245,158,11,.45);
+   background: rgba(245,158,11,.14);
+   color: #b45309;
+ }
+ .mstatus.bought{
+   border-color: var(--cat-bought-border);
+   background: var(--cat-bought-bg);
+   color: var(--text);
+ }
+ [data-theme="dark"] .mstatus.pending{
+   color: #fbbf24;
+ }
  .mrow{
-   margin-top: 6px;
+   margin-top: 8px; /* separa de status e evita conflito com área de ações */
    display: flex;
    flex-direction: column;
    gap: 2px;
  }
  .mrow-labels{
-   display: flex;
-   gap: 33px;
-   margin-bottom: 6px;
+   display: grid;
+   grid-template-columns: minmax(74px, 1fr) minmax(62px, 1fr) auto;
+   gap: 8px;
+   margin-bottom: 5px;
+   align-items: center;
  }
  .mactions-label{
-   margin-left: auto;
+   margin-left: 0;
+   justify-self: end;
  }
  .mfield-label{
    font-size: 10px;
@@ -528,10 +680,10 @@ tr.row-bought .badge{
    line-height: 1;
  }
  .mrow-values{
-   display: flex;
+   display: grid;
+   grid-template-columns: minmax(74px, 1fr) minmax(62px, 1fr) auto;
    align-items: center;
-   gap: 16px;
-   flex-wrap: nowrap;
+   gap: 8px;
  }
  .mfield{
    flex: 0 0 auto;
@@ -657,24 +809,25 @@ tr.row-bought .badge{
  }
  .mactions-inline{
    display: flex;
-   gap: 6px;
+   gap: 4px;
    align-items: center;
    flex-shrink: 0;
-   margin-left: auto;
+   margin-left: 0;
+   justify-self: end;
  }
  .mactions .btn{
    width: 100%;
    justify-content:center;
  }
  .icon-btn-action{
-   width: 32px;
-   height: 32px;
+   width: 26px;
+   height: 26px;
    padding: 0;
    border: 1px solid var(--border);
    border-radius: 6px;
    background: transparent;
    color: var(--text);
-   font-size: 16px;
+   font-size: 13px;
    cursor: pointer;
    display: inline-flex;
    align-items: center;
@@ -694,10 +847,39 @@ tr.row-bought .badge{
    border-color: var(--primary);
    color: var(--primary);
  }
- /* comprado (verde claro) */
- .mcard.row-bought{
-   border-color: rgba(34,197,94,.45);
-   background: rgba(34,197,94,.12);
+ .mobile-list.cat-clean .mcard.row-pending,
+ .mobile-list.cat-bakery .mcard.row-pending,
+ .mobile-list.cat-produce .mcard.row-pending,
+ .mobile-list.cat-drinks .mcard.row-pending,
+ .mobile-list.cat-grocery .mcard.row-pending,
+ .mobile-list.cat-protein .mcard.row-pending,
+ .mobile-list.cat-general .mcard.row-pending,
+ .mobile-list.cat-churrasco .mcard.row-pending{
+   background: var(--cat-pending-bg);
+   border-color: var(--cat-pending-border);
+   box-shadow: inset 0 0 0 1px rgba(255,255,255,.05);
+ }
+ [data-theme="light"] .mobile-list.cat-clean .mcard.row-pending,
+ [data-theme="light"] .mobile-list.cat-bakery .mcard.row-pending,
+ [data-theme="light"] .mobile-list.cat-produce .mcard.row-pending,
+ [data-theme="light"] .mobile-list.cat-drinks .mcard.row-pending,
+ [data-theme="light"] .mobile-list.cat-grocery .mcard.row-pending,
+ [data-theme="light"] .mobile-list.cat-protein .mcard.row-pending,
+ [data-theme="light"] .mobile-list.cat-general .mcard.row-pending,
+ [data-theme="light"] .mobile-list.cat-churrasco .mcard.row-pending{
+   box-shadow: inset 0 0 0 1px rgba(17,24,39,.04);
+ }
+ .mobile-list.cat-clean .mcard.row-bought,
+ .mobile-list.cat-bakery .mcard.row-bought,
+ .mobile-list.cat-produce .mcard.row-bought,
+ .mobile-list.cat-drinks .mcard.row-bought,
+ .mobile-list.cat-grocery .mcard.row-bought,
+ .mobile-list.cat-protein .mcard.row-bought,
+ .mobile-list.cat-general .mcard.row-bought,
+ .mobile-list.cat-churrasco .mcard.row-bought{
+   background: var(--cat-bought-bg);
+   border-color: var(--cat-bought-border);
+   box-shadow: inset 0 0 0 2px var(--cat-bought-border);
  }
  .mcard.row-bought .mname,
  .mcard.row-bought .mtotal .value{

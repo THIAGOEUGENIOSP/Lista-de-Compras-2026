@@ -12,6 +12,17 @@ const GENERAL_CATEGORIES = [
 
 const CATEGORY_OPTIONS = [...GENERAL_CATEGORIES, "Churrasco"];
 
+const CATEGORY_META = {
+  "Limpeza e Higiene": { icon: "🧽", className: "cat-clean" },
+  "Padaria e Laticínios": { icon: "🥖", className: "cat-bakery" },
+  Hortifruti: { icon: "🥬", className: "cat-produce" },
+  Bebidas: { icon: "🥤", className: "cat-drinks" },
+  Mercearia: { icon: "🛒", className: "cat-grocery" },
+  "Proteínas e Ovos": { icon: "🥚", className: "cat-protein" },
+  Geral: { icon: "📦", className: "cat-general" },
+  Churrasco: { icon: "🔥", className: "cat-churrasco" },
+};
+
 const KEYWORDS_BY_CATEGORY = {
   "Limpeza e Higiene": [
     "detergente",
@@ -268,4 +279,9 @@ export function groupShoppingItemsByCategory(items) {
 
 export function getShoppingCategories() {
   return [...CATEGORY_OPTIONS];
+}
+
+export function getCategoryMeta(category) {
+  const normalized = normalizeShoppingCategory(category);
+  return CATEGORY_META[normalized] || CATEGORY_META.Geral;
 }

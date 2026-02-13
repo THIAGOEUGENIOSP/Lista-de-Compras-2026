@@ -339,3 +339,15 @@ export function getCategoryMeta(category) {
   const normalized = normalizeShoppingCategory(category);
   return CATEGORY_META[normalized] || CATEGORY_META.Geral;
 }
+
+export function toCategoryAnchor(category) {
+  const normalized = normalizeShoppingCategory(category);
+  if (!normalized) return "geral";
+  return normalized
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^\p{L}\p{N}\s-]/gu, " ")
+    .trim()
+    .replace(/\s+/g, "-");
+}

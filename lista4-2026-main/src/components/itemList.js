@@ -4,6 +4,7 @@ import {
   getCategoryMeta,
   groupShoppingItemsByCategory,
   normalizeShoppingCategory,
+  toCategoryAnchor,
 } from "../utils/shoppingCategories.js";
 
 function collabName(it) {
@@ -124,7 +125,7 @@ function renderTableBlock({ title, items, showCategory, category }) {
     String(title || "").split("•")[1]?.trim() ||
     "Geral";
   const meta = getCategoryMeta(categoryLabel);
-  const anchor = escapeHtml(categoryLabel);
+  const anchor = escapeHtml(toCategoryAnchor(categoryLabel));
   return `
   <div class="card section only-desktop" style="margin-top:12px" data-category-anchor="${anchor}">
     <div class="category-block category-pill-head ${meta.className}">
@@ -269,11 +270,12 @@ export function renderItemListControls(state) {
       ${shortcuts
         .map((category) => {
           const meta = getCategoryMeta(category);
+          const anchor = toCategoryAnchor(category);
           const label =
             category === "Churrasco"
               ? "Itens por peso (Carnes, queijos e etc.)"
               : category;
-          return `<button class="btn small category-shortcut ${meta.className}" data-action="scroll-category" data-category="${escapeHtml(category)}" title="${escapeHtml(label)}"><span class="cat-dot" aria-hidden="true">${meta.icon}</span><span class="cat-shortcut-label">${escapeHtml(label)}</span></button>`;
+          return `<button class="btn small category-shortcut ${meta.className}" data-action="scroll-category" data-category="${escapeHtml(anchor)}" title="${escapeHtml(label)}"><span class="cat-dot" aria-hidden="true">${meta.icon}</span><span class="cat-shortcut-label">${escapeHtml(label)}</span></button>`;
         })
         .join("")}
     </div>
@@ -339,7 +341,7 @@ export function renderItemMobileList(items, sortKey) {
       : formatQuantidade(qtd, "Churrasco");
 
     const header = `
-      <div class="card section only-mobile category-block ${meta.className}" style="margin-top:12px" data-category-anchor="${escapeHtml(safeCategory)}">
+      <div class="card section only-mobile category-block category-pill-head ${meta.className}" style="margin-top:12px" data-category-anchor="${escapeHtml(toCategoryAnchor(safeCategory))}">
         <div class="category-head">
           <div class="category-title-wrap">
             <span class="cat-dot" aria-hidden="true">${meta.icon}</span>

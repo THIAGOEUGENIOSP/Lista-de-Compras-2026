@@ -27,11 +27,15 @@ const KEYWORDS_BY_CATEGORY = {
   "Limpeza e Higiene": [
     "detergente",
     "sabao",
+    "alcool",
+    "alcool 70",
     "amaciante",
     "agua sanitaria",
     "desinfetante",
     "esponja",
     "papel higienico",
+    "papel toalha",
+    "pano de prato",
     "creme dental",
     "pasta de dente",
     "escova de dente",
@@ -43,11 +47,14 @@ const KEYWORDS_BY_CATEGORY = {
   "Padaria e Laticínios": [
     "pao",
     "pao de forma",
+    "bisnaguinha",
     "leite",
     "queijo",
+    "mussarela",
     "manteiga",
     "requeijao",
     "iogurte",
+    "danone",
     "coalhada",
     "creme de leite",
     "nata",
@@ -55,6 +62,8 @@ const KEYWORDS_BY_CATEGORY = {
   Hortifruti: [
     "banana",
     "maca",
+    "mamao",
+    "manga",
     "uva",
     "laranja",
     "limao",
@@ -95,6 +104,7 @@ const KEYWORDS_BY_CATEGORY = {
     "azeite",
     "maionese",
     "ketchup",
+    "granola",
     "mostarda",
     "molho",
     "extrato",
@@ -110,6 +120,7 @@ const KEYWORDS_BY_CATEGORY = {
     "frango",
     "carne",
     "peixe",
+    "sardinha",
     "linguica",
     "salsicha",
     "peru",
@@ -157,6 +168,10 @@ function scoreTokenPair(inputToken, keywordToken) {
   const keywordSingular = singularizeToken(keywordToken);
   if (inputSingular === keywordSingular) return 3;
 
+  if (isOneEditAway(inputSingular, keywordSingular)) {
+    return 2;
+  }
+
   const minLen = Math.min(inputToken.length, keywordToken.length);
   if (
     minLen >= 4 &&
@@ -173,6 +188,40 @@ function scoreTokenPair(inputToken, keywordToken) {
   }
 
   return 0;
+}
+
+function isOneEditAway(a, b) {
+  if (!a || !b) return false;
+  const lenA = a.length;
+  const lenB = b.length;
+  if (Math.abs(lenA - lenB) > 1) return false;
+  if (Math.min(lenA, lenB) < 5) return false;
+
+  let i = 0;
+  let j = 0;
+  let edits = 0;
+
+  while (i < lenA && j < lenB) {
+    if (a[i] === b[j]) {
+      i += 1;
+      j += 1;
+      continue;
+    }
+    edits += 1;
+    if (edits > 1) return false;
+
+    if (lenA > lenB) {
+      i += 1;
+    } else if (lenB > lenA) {
+      j += 1;
+    } else {
+      i += 1;
+      j += 1;
+    }
+  }
+
+  if (i < lenA || j < lenB) edits += 1;
+  return edits <= 1;
 }
 
 function scoreByKeywords(normalizedName, inputTokens, keywords) {

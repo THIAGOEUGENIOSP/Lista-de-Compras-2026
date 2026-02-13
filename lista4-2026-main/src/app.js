@@ -855,6 +855,41 @@ function bindDelegatedEvents() {
         return;
       }
 
+      if (action === "scroll-top") {
+        const target = document.querySelector('[data-action="open-add"]');
+        if (target) {
+          target.scrollIntoView({ behavior: "smooth", block: "start" });
+        } else {
+          window.scrollTo({ top: 0, behavior: "smooth" });
+        }
+        return;
+      }
+
+      if (action === "scroll-category") {
+        const category = String(el.dataset.category || "").trim();
+        if (!category) return;
+
+        const isMobile = window.matchMedia("(max-width: 768px)").matches;
+        const preferredSelector = isMobile
+          ? `.only-mobile[data-category-anchor="${category}"]`
+          : `.only-desktop[data-category-anchor="${category}"]`;
+
+        const target =
+          document.querySelector(preferredSelector) ||
+          document.querySelector(`[data-category-anchor="${category}"]`);
+
+        if (!target) {
+          toast.show({
+            title: "Categoria",
+            message: "Categoria não encontrada na lista atual.",
+          });
+          return;
+        }
+
+        target.scrollIntoView({ behavior: "smooth", block: "start" });
+        return;
+      }
+
       if (action === "prev-month") {
         state.cursorDate = addMonths(state.cursorDate, -1);
         saveCursor();

@@ -45,7 +45,7 @@
 .category-title-wrap{
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 5px;
 }
 .cat-dot{
   width: 18px;
@@ -65,6 +65,62 @@
 .cat-count{
   font-size: 12px;
   color: var(--muted);
+}
+.category-head-sub{
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.category-top-btn{
+  padding: 4px 8px;
+  border-radius: 9px;
+  font-size: 11px;
+  white-space: nowrap;
+}
+.row.category-shortcuts{
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 6px;
+}
+.category-shortcut{
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  border: 2px solid var(--cat-pending-border);
+  border-left-width: 4px;
+  border-left-color: var(--cat-accent);
+  background: linear-gradient(180deg, var(--cat-head-bg) 0%, var(--card) 72%);
+  font-weight: 600;
+  padding: 8px 8px;
+  justify-content: flex-start;
+  width: 100%;
+  text-align: left;
+}
+.category-shortcut .cat-dot{
+  width: auto;
+  height: auto;
+  font-size: 12px;
+  margin-right: 1px;
+}
+.cat-shortcut-label{
+  display: inline-block;
+  line-height: 1.15;
+  text-align: left;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+  flex: 1;
+}
+[data-theme="light"] .category-shortcut{
+  background: linear-gradient(180deg, var(--cat-head-bg) 0%, #ffffff 72%);
+}
+@media (max-width: 768px){
+  .row.category-shortcuts{
+    gap: 8px;
+  }
 }
 .cat-icon{
   display: inline-flex;
@@ -619,6 +675,10 @@ tr.row-bought .badge{
   }
   .cat-title{ font-size: 15px; }
   .cat-count{ font-size: 11px; }
+  .category-top-btn{
+    font-size: 10px;
+    padding: 4px 7px;
+  }
   /* iOS: evita zoom automático ao focar inputs */
   .input, select, textarea{
     font-size: 16px;

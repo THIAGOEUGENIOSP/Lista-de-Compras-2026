@@ -42,6 +42,14 @@ function escapeHtml(value) {
     .replace(/'/g, "&#39;");
 }
 
+function availableCategoryShortcuts(items) {
+  const general = groupShoppingItemsByCategory(
+    (items || []).filter((it) => !isChurrasco(it)),
+  ).map((g) => g.category);
+  const hasChurrasco = (items || []).some((it) => isChurrasco(it));
+  return hasChurrasco ? [...general, "Churrasco"] : general;
+}
+
 function isChurrasco(it) {
   return isPesoCategoria(normalizeShoppingCategory(it?.categoria));
 }
@@ -116,8 +124,9 @@ function renderTableBlock({ title, items, showCategory, category }) {
     String(title || "").split("•")[1]?.trim() ||
     "Geral";
   const meta = getCategoryMeta(categoryLabel);
+  const anchor = escapeHtml(categoryLabel);
   return `
-  <div class="card section only-desktop" style="margin-top:12px">
+  <div class="card section only-desktop" style="margin-top:12px" data-category-anchor="${anchor}">
     <div class="category-block category-pill-head ${meta.className}">
       <div class="category-head">
         <div class="category-title-wrap">
@@ -214,6 +223,7 @@ function renderTableBlock({ title, items, showCategory, category }) {
 
 export function renderItemListControls(state) {
   const names = collaboratorOptions(state);
+  const shortcuts = availableCategoryShortcuts(state?.items || []);
   return `
   <div class="card section">
     <div class="row space-between">
@@ -252,6 +262,20 @@ export function renderItemListControls(state) {
           <option value="value_asc" ${state.sortKey === "value_asc" ? "selected" : ""}>Menor total</option>
         </select>
       </div>
+    </div>
+
+    <div class="row category-shortcuts" aria-label="Atalhos de categoria">
+      ${shortcuts.length === 0 ? '<span class="muted" style="font-size:12px">Sem categorias no período.</span>' : ""}
+      ${shortcuts
+        .map((category) => {
+          const meta = getCategoryMeta(category);
+          const label =
+            category === "Churrasco"
+              ? "Itens por peso (Carnes, queijos e etc.)"
+              : category;
+          return `<button class="btn small category-shortcut ${meta.className}" data-action="scroll-category" data-category="${escapeHtml(category)}" title="${escapeHtml(label)}"><span class="cat-dot" aria-hidden="true">${meta.icon}</span><span class="cat-shortcut-label">${escapeHtml(label)}</span></button>`;
+        })
+        .join("")}
     </div>
   </div>
   `;
@@ -315,13 +339,16 @@ export function renderItemMobileList(items, sortKey) {
       : formatQuantidade(qtd, "Churrasco");
 
     const header = `
-      <div class="card section only-mobile category-block ${meta.className}" style="margin-top:12px">
+      <div class="card section only-mobile category-block ${meta.className}" style="margin-top:12px" data-category-anchor="${escapeHtml(safeCategory)}">
         <div class="category-head">
           <div class="category-title-wrap">
             <span class="cat-dot" aria-hidden="true">${meta.icon}</span>
             <h2 class="cat-title">${title}</h2>
           </div>
-          <div class="cat-count">${blockItems.length} item(ns)</div>
+          <div class="category-head-sub">
+            <div class="cat-count">${blockItems.length} item(ns)</div>
+            <button class="btn small category-top-btn" data-action="scroll-top">Início</button>
+          </div>
         </div>
       </div>
     `;

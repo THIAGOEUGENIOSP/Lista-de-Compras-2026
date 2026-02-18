@@ -42,7 +42,7 @@ export function renderHeader({
     <div class="hr"></div>
 
     <div class="row">
-      <button class="btn only-mobile" data-action="scroll-top">Início</button>
+      <button class="btn" data-action="scroll-top">Início</button>
       <button class="btn warn" data-action="zero-prices">Zerar preços do mês</button>
       <button class="btn primary" data-action="copy-next">Copiar lista p/ próximo mês</button>
       <button class="btn danger" data-action="delete-month">Mover lista do mês p/ lixeira</button>

@@ -7,6 +7,8 @@ import {
   classifyShoppingCategory,
   getShoppingCategories,
   normalizeShoppingCategory,
+  registerShoppingCategoryCorrection,
+  setSharedShoppingCategoryCorrections,
 } from "./utils/shoppingCategories.js";
 
 import { mountToast } from "./components/toast.js";
@@ -48,6 +50,11 @@ import {
   copyItemsToPeriod,
   listAuditLogsByPeriod,
 } from "./services/items.js";
+import {
+  fetchSharedCategoryCorrections,
+  getCategoryLearningCapabilities,
+  upsertSharedCategoryCorrection,
+} from "./services/categoryLearning.js";
 
 const root = document.getElementById("app");
 const toast = mountToast(document.body);
@@ -130,6 +137,7 @@ const state = {
   budgets: {},
   budgetCollapsed: true,
   auditCollapsed: true,
+  sharedCategoryLearningEnabled: false,
 
   charts: null,
   delegatedBound: false,
@@ -628,6 +636,16 @@ async function loadDataForPeriod() {
   const caps = await getItemsCapabilities();
   state.softDeleteEnabled = Boolean(caps.softDelete);
   state.auditLogEnabled = Boolean(caps.auditLog);
+  const learningCaps = await getCategoryLearningCapabilities();
+  state.sharedCategoryLearningEnabled = Boolean(
+    learningCaps.sharedCategoryLearning,
+  );
+  if (state.sharedCategoryLearningEnabled) {
+    const sharedMap = await fetchSharedCategoryCorrections(800);
+    setSharedShoppingCategoryCorrections(sharedMap);
+  } else {
+    setSharedShoppingCategoryCorrections({});
+  }
 
   const raw = await fetchItems(state.currentPeriod.id);
   state.items = (raw || []).map(normalizeItem);
@@ -1046,6 +1064,11 @@ function bindPerRenderInputs() {
           payload.categoria = "Churrasco";
         }
 
+        const shouldLearnCategory =
+          manualCategorySelected &&
+          payload.categoria !== "Churrasco" &&
+          payload.categoria !== "Geral";
+
         const isPeso = isPesoCategoria(payload.categoria);
         if (!isPeso) {
           const key = normalizeNameKey(payload.nome);
@@ -1095,6 +1118,17 @@ function bindPerRenderInputs() {
           );
           state.items = [created, ...state.items];
           toast.show({ title: "Adicionado", message: "Item criado." });
+        }
+
+        if (shouldLearnCategory) {
+          registerShoppingCategoryCorrection(payload.nome, payload.categoria);
+          if (state.sharedCategoryLearningEnabled) {
+            upsertSharedCategoryCorrection({
+              name: payload.nome,
+              category: payload.categoria,
+              collaboratorName: state.collaboratorName,
+            }).catch(() => {});
+          }
         }
 
         closeModal();

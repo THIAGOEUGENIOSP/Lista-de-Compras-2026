@@ -22,6 +22,8 @@ const CATEGORY_META = {
   Geral: { icon: "📦", className: "cat-general" },
   Churrasco: { icon: "🔥", className: "cat-churrasco" },
 };
+const LEARNED_CATEGORY_STORE_KEY = "shoppingCategoryLearnedMap";
+let sharedLearnedCategoryMap = {};
 
 const KEYWORDS_BY_CATEGORY = {
   "Limpeza e Higiene": [
@@ -48,6 +50,51 @@ const KEYWORDS_BY_CATEGORY = {
     "shampoo",
     "condicionador",
     "absorvente",
+    "detergente liquido",
+    "detergente neutro",
+    "sabao em po",
+    "sabao liquido",
+    "sabao em barra",
+    "multiuso",
+    "limpador perfumado",
+    "limpador com alcool",
+    "limpador de vidro",
+    "limpador de piso",
+    "limpador de banheiro",
+    "limpador desengordurante",
+    "esponja de louca",
+    "esponja de aco",
+    "palha de aco",
+    "pano de chao",
+    "pano multiuso",
+    "rodo",
+    "vassoura",
+    "balde",
+    "escova de lavar roupa",
+    "escova sanitaria",
+    "saco de lixo",
+    "guardanapo",
+    "lenco umedecido",
+    "sabonete em barra",
+    "sabonete liquido",
+    "fio dental",
+    "enxaguante bucal",
+    "desodorante",
+    "protetor diario",
+    "algodao",
+    "cotonete",
+    "alcool em gel",
+    "inseticida",
+    "repelente",
+    "lustra moveis",
+    "cloro gel",
+    "sabao glicerinado",
+    "limpador de forno",
+    "limpador de inox",
+    "tira manchas",
+    "desentupidor",
+    "desodorizador de ambiente",
+    "odorizador automatico",
   ],
   "Padaria e Laticínios": [
     "pao",
@@ -63,6 +110,38 @@ const KEYWORDS_BY_CATEGORY = {
     "coalhada",
     "creme de leite",
     "nata",
+    "pao frances",
+    "pao integral",
+    "pao de hamburguer",
+    "pao de hot dog",
+    "pao sirio",
+    "croissant",
+    "baguete",
+    "rosca doce",
+    "pao de queijo",
+    "queijo prato",
+    "queijo minas",
+    "queijo coalho",
+    "queijo parmesao",
+    "queijo provolone",
+    "queijo suico",
+    "queijo gouda",
+    "queijo brie",
+    "queijo camembert",
+    "cream cheese",
+    "margarina",
+    "leite integral",
+    "leite desnatado",
+    "leite semidesnatado",
+    "leite sem lactose",
+    "leite em po",
+    "iogurte natural",
+    "iogurte grego",
+    "iogurte integral",
+    "iogurte desnatado",
+    "leite condensado",
+    "doce de leite",
+    "ricota",
   ],
   Hortifruti: [
     "banana",
@@ -85,6 +164,42 @@ const KEYWORDS_BY_CATEGORY = {
     "fruta",
     "verdura",
     "legume",
+    "alface americana",
+    "alface crespa",
+    "alface roxa",
+    "rucula",
+    "agriao",
+    "couve manteiga",
+    "espinafre",
+    "couve flor",
+    "repolho",
+    "tomate cereja",
+    "batata inglesa",
+    "batata doce",
+    "beterraba",
+    "abobrinha",
+    "berinjela",
+    "pimentao",
+    "milho verde",
+    "vagem",
+    "chuchu",
+    "mandioca",
+    "inhame",
+    "banana prata",
+    "banana nanica",
+    "banana maca",
+    "laranja pera",
+    "laranja lima",
+    "limao taiti",
+    "limao siciliano",
+    "melancia",
+    "melao",
+    "mamao papaya",
+    "morango",
+    "kiwi",
+    "pera",
+    "ameixa",
+    "pessego",
   ],
   Bebidas: [
     "agua",
@@ -97,6 +212,35 @@ const KEYWORDS_BY_CATEGORY = {
     "energetico",
     "cha",
     "cafe",
+    "agua mineral",
+    "agua com gas",
+    "refrigerante cola",
+    "refrigerante guarana",
+    "refrigerante laranja",
+    "suco de laranja",
+    "suco de uva",
+    "suco de abacaxi",
+    "suco integral",
+    "suco nectar",
+    "suco em po",
+    "cha gelado",
+    "cha mate",
+    "cafe torrado",
+    "cafe em po",
+    "cafe em capsula",
+    "cerveja lata",
+    "cerveja long neck",
+    "cerveja artesanal",
+    "vinho tinto",
+    "vinho branco",
+    "vinho rose",
+    "espumante",
+    "gin",
+    "rum",
+    "isotonico",
+    "leite vegetal",
+    "achocolatado",
+    "agua de coco",
   ],
   Mercearia: [
     "arroz",
@@ -118,6 +262,44 @@ const KEYWORDS_BY_CATEGORY = {
     "ervilha",
     "biscoito",
     "bolacha",
+    "arroz branco",
+    "arroz integral",
+    "feijao carioca",
+    "feijao preto",
+    "feijao branco",
+    "macarrao espaguete",
+    "macarrao penne",
+    "macarrao parafuso",
+    "molho de tomate",
+    "extrato de tomate",
+    "farinha de trigo",
+    "farinha de mandioca",
+    "farinha de milho",
+    "acucar refinado",
+    "acucar mascavo",
+    "oleo de soja",
+    "oleo de milho",
+    "azeite de oliva",
+    "vinagre",
+    "milho enlatado",
+    "ervilha enlatada",
+    "atum enlatado",
+    "molho barbecue",
+    "biscoito recheado",
+    "biscoito salgado",
+    "bolacha agua e sal",
+    "cereal matinal",
+    "aveia",
+    "achocolatado em po",
+    "gelatina",
+    "pudim em po",
+    "fermento",
+    "tempero pronto",
+    "caldo em cubo",
+    "canjica",
+    "lentilha",
+    "grao de bico",
+    "quinoa",
   ],
   "Proteínas e Ovos": [
     "ovo",
@@ -131,6 +313,42 @@ const KEYWORDS_BY_CATEGORY = {
     "peru",
     "bacon",
     "presunto",
+    "ovo branco",
+    "ovo caipira",
+    "ovo organico",
+    "peito de frango",
+    "coxa de frango",
+    "sobrecoxa",
+    "asa de frango",
+    "file de frango",
+    "carne moida",
+    "patinho",
+    "alcatra",
+    "picanha",
+    "contrafile",
+    "costela bovina",
+    "acem",
+    "musculo",
+    "cupim",
+    "linguica toscana",
+    "linguica calabresa",
+    "peito de peru",
+    "mortadela",
+    "carne suina",
+    "lombo suino",
+    "costelinha suina",
+    "tilapia",
+    "salmao",
+    "merluza",
+    "atum fresco",
+    "camarao",
+    "carne seca",
+    "frango inteiro",
+    "hamburguer bovino",
+    "hamburguer frango",
+    "hamburguer vegetal",
+    "tofu",
+    "proteina de soja",
   ],
 };
 
@@ -146,6 +364,10 @@ function normalizeShoppingText(value) {
     .replace(/[^\p{L}\p{N}\s]/gu, " ")
     .replace(/\s+/g, " ")
     .trim();
+}
+
+export function normalizeShoppingItemName(value) {
+  return normalizeShoppingText(value);
 }
 
 function singularizeToken(token) {
@@ -256,9 +478,55 @@ function scoreByKeywords(normalizedName, inputTokens, keywords) {
   return score;
 }
 
+function loadLearnedCategoryMap() {
+  try {
+    const raw = localStorage.getItem(LEARNED_CATEGORY_STORE_KEY);
+    if (!raw) return {};
+    const parsed = JSON.parse(raw);
+    return parsed && typeof parsed === "object" ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+
+function saveLearnedCategoryMap(nextMap) {
+  try {
+    localStorage.setItem(
+      LEARNED_CATEGORY_STORE_KEY,
+      JSON.stringify(nextMap || {}),
+    );
+  } catch {
+    // sem-op: quota/ambiente
+  }
+}
+
+function getLearnedCategory(name) {
+  const normalizedName = normalizeShoppingText(name);
+  if (!normalizedName) return null;
+
+  const sharedLearned = normalizeShoppingCategory(
+    sharedLearnedCategoryMap[normalizedName],
+  );
+  if (
+    sharedLearned &&
+    sharedLearned !== "Geral" &&
+    sharedLearned !== "Churrasco"
+  ) {
+    return sharedLearned;
+  }
+
+  const map = loadLearnedCategoryMap();
+  const learned = normalizeShoppingCategory(map[normalizedName]);
+  if (!learned || learned === "Geral" || learned === "Churrasco") return null;
+  return learned;
+}
+
 export function classifyShoppingCategory(name) {
   const normalizedName = normalizeShoppingText(name);
   if (!normalizedName) return "Geral";
+
+  const learned = getLearnedCategory(normalizedName);
+  if (learned) return learned;
 
   const inputTokens = tokensOf(normalizedName);
   if (!inputTokens.length) return "Geral";
@@ -280,6 +548,24 @@ export function classifyShoppingCategory(name) {
   return best.category;
 }
 
+export function registerShoppingCategoryCorrection(name, category) {
+  const normalizedName = normalizeShoppingText(name);
+  const normalizedCategory = normalizeShoppingCategory(category);
+  if (!normalizedName) return false;
+  if (!normalizedCategory || normalizedCategory === "Geral") return false;
+  if (normalizedCategory === "Churrasco") return false;
+
+  const current = loadLearnedCategoryMap();
+  current[normalizedName] = normalizedCategory;
+  saveLearnedCategoryMap(current);
+  return true;
+}
+
+export function setSharedShoppingCategoryCorrections(map) {
+  const safe = map && typeof map === "object" ? map : {};
+  sharedLearnedCategoryMap = { ...safe };
+}
+
 export function normalizeShoppingCategory(category) {
   if (isPesoCategoria(category)) return "Churrasco";
 
@@ -299,6 +585,9 @@ export function normalizeShoppingCategory(category) {
   }
   if (normalized === "proteinas" || normalized === "ovos") {
     return "Proteínas e Ovos";
+  }
+  if (normalized.startsWith("churrasco")) {
+    return "Churrasco";
   }
 
   return "Geral";

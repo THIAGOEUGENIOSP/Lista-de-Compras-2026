@@ -127,19 +127,22 @@ function renderTableBlock({ title, items, showCategory, category }) {
   const meta = getCategoryMeta(categoryLabel);
   const anchor = escapeHtml(toCategoryAnchor(categoryLabel));
   return `
-  <div class="card section only-desktop" style="margin-top:12px" data-category-anchor="${anchor}">
+  <div class="card section only-desktop category-desktop-block ${meta.className}" style="margin-top:12px" data-category-anchor="${anchor}">
     <div class="category-block category-pill-head ${meta.className}">
       <div class="category-head">
         <div class="category-title-wrap">
           <span class="cat-dot" aria-hidden="true">${meta.icon}</span>
           <h2 class="cat-title">${title}</h2>
         </div>
-        <div class="cat-count">${items.length} item(ns)</div>
+        <div class="category-head-sub">
+          <div class="cat-count">${items.length} item(ns)</div>
+          <button class="btn small category-top-btn" data-action="scroll-top">Início</button>
+        </div>
       </div>
     </div>
 
     <div class="table-wrap" style="margin-top:10px">
-      <table>
+      <table class="category-table">
         <thead>
           <tr>
             <th>Item</th>

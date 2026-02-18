@@ -88,15 +88,17 @@
   display: inline-flex;
   align-items: center;
   gap: 2px;
-  border: 2px solid var(--cat-pending-border);
-  border-left-width: 4px;
+  border: 1px solid var(--border);
+  border-left-width: 5px;
   border-left-color: var(--cat-accent);
-  background: linear-gradient(180deg, var(--cat-head-bg) 0%, var(--card) 72%);
+  background: linear-gradient(180deg, var(--cat-head-bg) 0%, var(--card) 42%);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.15);
   font-weight: 600;
   padding: 8px 8px;
   justify-content: flex-start;
   width: 100%;
   text-align: left;
+  border-radius: 11px;
 }
 .category-shortcut .cat-dot{
   width: auto;
@@ -115,7 +117,64 @@
   flex: 1;
 }
 [data-theme="light"] .category-shortcut{
-  background: linear-gradient(180deg, var(--cat-head-bg) 0%, #ffffff 72%);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--cat-head-bg) 82%, #fff) 0%, #ffffff 58%);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.85);
+}
+.category-shortcut.cat-clean{
+  border-left-color: #22c55e;
+  background: linear-gradient(180deg, rgba(34,197,94,.18) 0%, var(--card) 44%);
+}
+.category-shortcut.cat-bakery{
+  border-left-color: #f59e0b;
+  background: linear-gradient(180deg, rgba(245,158,11,.18) 0%, var(--card) 44%);
+}
+.category-shortcut.cat-produce{
+  border-left-color: #84cc16;
+  background: linear-gradient(180deg, rgba(132,204,22,.18) 0%, var(--card) 44%);
+}
+.category-shortcut.cat-drinks{
+  border-left-color: #38bdf8;
+  background: linear-gradient(180deg, rgba(56,189,248,.18) 0%, var(--card) 44%);
+}
+.category-shortcut.cat-grocery{
+  border-left-color: #a78bfa;
+  background: linear-gradient(180deg, rgba(167,139,250,.18) 0%, var(--card) 44%);
+}
+.category-shortcut.cat-protein{
+  border-left-color: #f97316;
+  background: linear-gradient(180deg, rgba(249,115,22,.18) 0%, var(--card) 44%);
+}
+.category-shortcut.cat-general{
+  border-left-color: #9ca3af;
+  background: linear-gradient(180deg, rgba(156,163,175,.16) 0%, var(--card) 44%);
+}
+.category-shortcut.cat-churrasco{
+  border-left-color: #ef4444;
+  background: linear-gradient(180deg, rgba(239,68,68,.18) 0%, var(--card) 44%);
+}
+[data-theme="light"] .category-shortcut.cat-clean{
+  background: linear-gradient(180deg, rgba(34,197,94,.22) 0%, #fff 60%);
+}
+[data-theme="light"] .category-shortcut.cat-bakery{
+  background: linear-gradient(180deg, rgba(245,158,11,.22) 0%, #fff 60%);
+}
+[data-theme="light"] .category-shortcut.cat-produce{
+  background: linear-gradient(180deg, rgba(132,204,22,.22) 0%, #fff 60%);
+}
+[data-theme="light"] .category-shortcut.cat-drinks{
+  background: linear-gradient(180deg, rgba(56,189,248,.22) 0%, #fff 60%);
+}
+[data-theme="light"] .category-shortcut.cat-grocery{
+  background: linear-gradient(180deg, rgba(167,139,250,.22) 0%, #fff 60%);
+}
+[data-theme="light"] .category-shortcut.cat-protein{
+  background: linear-gradient(180deg, rgba(249,115,22,.22) 0%, #fff 60%);
+}
+[data-theme="light"] .category-shortcut.cat-general{
+  background: linear-gradient(180deg, rgba(156,163,175,.20) 0%, #fff 60%);
+}
+[data-theme="light"] .category-shortcut.cat-churrasco{
+  background: linear-gradient(180deg, rgba(239,68,68,.22) 0%, #fff 60%);
 }
 @media (max-width: 768px){
   .row.category-shortcuts{
@@ -315,6 +374,13 @@ h3{ font-size: 14px; }
   border-color: rgba(245,158,11,.35);
 }
 .btn.small{ padding: 8px 10px; border-radius: 10px; font-size: 13px; }
+
+/* override do botão base para manter a borda lateral dos atalhos */
+.btn.category-shortcut{
+  border: 1px solid var(--border);
+  border-left-width: 4px;
+  border-left-color: var(--cat-accent);
+}
 
 .input, select{
   background: transparent;
@@ -651,6 +717,50 @@ tr.row-bought .icon-btn,
 tr.row-bought .badge{
   text-decoration: none;
   opacity: 1;
+}
+
+/* ====== Desktop: seção por categoria (paleta igual ao mobile) ====== */
+.category-desktop-block{
+  border-radius: 16px;
+  border: 1px solid var(--cat-pending-border);
+  border-left-width: 4px;
+  border-left-color: var(--cat-accent);
+  background: linear-gradient(180deg, var(--cat-head-bg) 0%, var(--card) 38%);
+}
+.category-desktop-block .category-pill-head{
+  margin: -14px -14px 0 -14px;
+  border: none;
+  border-left-width: 4px;
+  border-left-color: var(--cat-accent);
+  border-radius: 14px 14px 0 0;
+  background: linear-gradient(180deg, var(--cat-head-bg) 0%, transparent 88%);
+}
+.category-desktop-block .table-wrap{
+  margin-top: 8px !important;
+}
+.category-desktop-block .category-table thead th{
+  border-bottom-color: color-mix(in srgb, var(--cat-pending-border) 55%, transparent);
+}
+.category-desktop-block .category-table tbody tr{
+  background: var(--cat-pending-bg);
+  box-shadow: inset 0 0 0 2px var(--cat-pending-border);
+}
+.category-desktop-block .category-table tbody tr.row-bought{
+  background: var(--cat-bought-bg);
+  box-shadow: inset 0 0 0 2px var(--cat-bought-border);
+}
+.category-desktop-block .category-table tbody tr.row-summary{
+  background: color-mix(in srgb, var(--cat-head-bg) 55%, var(--card));
+  box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--cat-pending-border) 58%, transparent);
+}
+[data-theme="light"] .category-desktop-block{
+  background: linear-gradient(180deg, color-mix(in srgb, var(--cat-head-bg) 85%, #fff) 0%, #fff 40%);
+}
+[data-theme="light"] .category-desktop-block .category-table tbody tr{
+  background: color-mix(in srgb, var(--cat-pending-bg) 78%, #fff);
+}
+[data-theme="light"] .category-desktop-block .category-table tbody tr.row-bought{
+  background: color-mix(in srgb, var(--cat-bought-bg) 68%, #fff);
 }
 
 

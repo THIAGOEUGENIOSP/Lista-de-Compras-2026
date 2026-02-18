@@ -282,6 +282,45 @@ export async function restoreDeletedByPeriod(periodoId, collaboratorName = "") {
   return restored.length;
 }
 
+export async function restoreDeletedItem(itemId, collaboratorName = "") {
+  let canSoftDelete = false;
+  try {
+    canSoftDelete = await hasSoftDeleteSupport();
+  } catch {
+    canSoftDelete = false;
+  }
+  if (!canSoftDelete) return null;
+
+  const restoreRes = await sb
+    .from("items")
+    .update({
+      deleted_at: null,
+      deleted_by_nome: null,
+      delete_reason: null,
+    })
+    .eq("id", itemId)
+    .not("deleted_at", "is", null)
+    .select(ITEM_COLUMNS)
+    .maybeSingle();
+
+  if (restoreRes.error && isMissingColumnError(restoreRes.error, "deleted_at")) {
+    softDeleteSupport = false;
+    return null;
+  }
+
+  const restored = mustOk(restoreRes);
+  if (!restored) return null;
+
+  await safeLogAudit({
+    action: "ITEM_RESTORE",
+    collaboratorName,
+    periodId: restored.periodo_id || null,
+    itemId: restored.id || itemId,
+    details: {},
+  });
+  return restored;
+}
+
 export async function countDeletedByPeriod(periodoId) {
   let canSoftDelete = false;
   try {
@@ -404,4 +443,29 @@ export async function getItemsCapabilities() {
   }
 
   return { softDelete, auditLog };
+}
+
+export async function listAuditLogsByPeriod(periodoId, limit = 40) {
+  let canAuditLog = false;
+  try {
+    canAuditLog = await hasAuditLogSupport();
+  } catch {
+    canAuditLog = false;
+  }
+  if (!canAuditLog) return [];
+
+  const safeLimit = Math.max(1, Math.min(100, Number(limit) || 40));
+  const res = await sb
+    .from("audit_log")
+    .select("id,action,collaborator_name,period_id,item_id,details,created_at")
+    .eq("period_id", periodoId)
+    .order("created_at", { ascending: false })
+    .limit(safeLimit);
+
+  if (res.error && isMissingTableError(res.error, "audit_log")) {
+    auditLogSupport = false;
+    return [];
+  }
+
+  return mustOk(res) || [];
 }

@@ -34,6 +34,10 @@ export function renderItemFormModal() {
         <div class="full">
           <label class="muted" style="font-size:12px">Item</label>
           <input class="input" name="nome" placeholder="Ex: Cerveja, Carne, Refrigerante..." required />
+          <div id="itemSuggestionsWrap" class="item-suggestions" style="display:none">
+            <div class="muted" style="font-size:12px;margin-top:6px">Sugestões recorrentes</div>
+            <div id="itemSuggestions" class="item-suggestions-list"></div>
+          </div>
         </div>
 
         <div>

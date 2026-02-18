@@ -27,6 +27,7 @@ import {
   buildCharts,
   updateCharts,
 } from "./components/analytics.js";
+import { renderAuditLogSection } from "./components/audit.js";
 
 import { ensurePeriod, listRecentPeriods } from "./services/periods.js";
 import { getErrorMessage } from "./services/db.js";
@@ -38,14 +39,50 @@ import {
   bulkZeroPrices,
   bulkDeleteByPeriod,
   restoreDeletedByPeriod,
+  restoreDeletedItem,
   countDeletedByPeriod,
   purgeDeletedByPeriod,
   getItemsCapabilities,
   copyItemsToPeriod,
+  listAuditLogsByPeriod,
 } from "./services/items.js";
 
 const root = document.getElementById("app");
 const toast = mountToast(document.body);
+const UI_PREFS_KEY = "shoppingUiPrefs";
+const ALLOWED_STATUS_FILTERS = new Set(["ALL", "PENDENTE", "COMPRADO"]);
+const ALLOWED_SORT_KEYS = new Set(["name_asc", "value_desc", "value_asc", "created_desc"]);
+
+function safeStatusFilter(value) {
+  return ALLOWED_STATUS_FILTERS.has(String(value)) ? String(value) : "ALL";
+}
+
+function safeSortKey(value) {
+  return ALLOWED_SORT_KEYS.has(String(value)) ? String(value) : "name_asc";
+}
+
+function loadUiPrefs() {
+  try {
+    const raw = localStorage.getItem(UI_PREFS_KEY);
+    if (!raw) return {};
+    const parsed = JSON.parse(raw);
+    return parsed && typeof parsed === "object" ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+
+function saveUiPrefs() {
+  const payload = {
+    filterStatus: state.filterStatus,
+    filterCollaborator: state.filterCollaborator,
+    searchText: state.searchText,
+    sortKey: state.sortKey,
+  };
+  localStorage.setItem(UI_PREFS_KEY, JSON.stringify(payload));
+}
+
+const uiPrefs = loadUiPrefs();
 
 const state = {
   theme: getTheme(),
@@ -63,12 +100,15 @@ const state = {
   currentPeriod: null,
   items: [],
 
-  filterStatus: "ALL",
-  filterCollaborator: "ALL",
-  searchText: "",
-  sortKey: "name_asc",
+  filterStatus: safeStatusFilter(uiPrefs.filterStatus || "ALL"),
+  filterCollaborator: String(uiPrefs.filterCollaborator || "ALL"),
+  searchText: String(uiPrefs.searchText || ""),
+  sortKey: safeSortKey(uiPrefs.sortKey || "name_asc"),
   deletedCount: 0,
   softDeleteEnabled: false,
+  auditLogEnabled: false,
+  auditLogs: [],
+  auditActionFilter: "ALL",
 
   charts: null,
   delegatedBound: false,
@@ -115,6 +155,34 @@ function totalOfItem(it) {
   const qtd = Number(it.quantidade || 0);
   const unit = num(it.valor_unitario || 0);
   return isPesoCategoria(it.categoria) ? unit : qtd * unit;
+}
+
+function buildRecurringItemSuggestions(limit = 8) {
+  const map = new Map();
+  for (const it of state.items || []) {
+    const rawName = String(it?.nome || "").trim();
+    const key = normalizeNameKey(rawName);
+    if (!key || !rawName) continue;
+
+    const prev = map.get(key) || {
+      key,
+      name: rawName,
+      count: 0,
+      createdAt: 0,
+    };
+    prev.count += 1;
+    const createdTs = new Date(it?.created_at || 0).getTime() || 0;
+    if (createdTs >= prev.createdAt) {
+      prev.createdAt = createdTs;
+      prev.name = rawName;
+    }
+    map.set(key, prev);
+  }
+
+  return Array.from(map.values())
+    .sort((a, b) => (b.count - a.count) || (b.createdAt - a.createdAt))
+    .slice(0, Math.max(1, Number(limit) || 8))
+    .map((row) => row.name);
 }
 
 function getAdminDeletePin() {
@@ -261,6 +329,15 @@ function normalizeText(value) {
     .toLowerCase()
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "");
+}
+
+function escapeHtml(value) {
+  return String(value || "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
 }
 
 function computeEconomyInsights(items) {
@@ -473,15 +550,28 @@ async function loadDataForPeriod() {
   state.currentPeriod = await ensurePeriod(state.cursorDate);
   const caps = await getItemsCapabilities();
   state.softDeleteEnabled = Boolean(caps.softDelete);
+  state.auditLogEnabled = Boolean(caps.auditLog);
 
   const raw = await fetchItems(state.currentPeriod.id);
   state.items = (raw || []).map(normalizeItem);
   state.deletedCount = await countDeletedByPeriod(state.currentPeriod.id);
+  if (state.auditLogEnabled) {
+    try {
+      state.auditLogs = await listAuditLogsByPeriod(state.currentPeriod.id, 50);
+    } catch {
+      state.auditLogs = [];
+    }
+  } else {
+    state.auditLogs = [];
+  }
 
   const collabFilter = String(state.filterCollaborator || "ALL");
   if (collabFilter !== "ALL") {
     const exists = state.items.some((it) => getCollaboratorName(it) === collabFilter);
-    if (!exists) state.filterCollaborator = "ALL";
+    if (!exists) {
+      state.filterCollaborator = "ALL";
+      saveUiPrefs();
+    }
   }
 }
 
@@ -548,6 +638,14 @@ function renderApp() {
         ${renderAnalytics(economy)}
       </div>
 
+      <div style="margin-top:12px">
+        ${renderAuditLogSection({
+          enabled: state.auditLogEnabled,
+          logs: state.auditLogs,
+          actionFilter: state.auditActionFilter,
+        })}
+      </div>
+
       ${renderItemFormModal()}
     </div>
   `;
@@ -599,7 +697,8 @@ function bindPerRenderInputs() {
   // filtros
   qsa("[data-filter]").forEach((b) => {
     b.addEventListener("click", () => {
-      state.filterStatus = b.dataset.filter;
+      state.filterStatus = safeStatusFilter(b.dataset.filter);
+      saveUiPrefs();
       renderApp();
     });
   });
@@ -609,6 +708,7 @@ function bindPerRenderInputs() {
   if (collaboratorFilter) {
     collaboratorFilter.addEventListener("change", () => {
       state.filterCollaborator = collaboratorFilter.value || "ALL";
+      saveUiPrefs();
       rerenderTableOnly();
       rerenderListOnly();
     });
@@ -619,6 +719,7 @@ function bindPerRenderInputs() {
   if (s) {
     s.addEventListener("input", () => {
       state.searchText = s.value;
+      saveUiPrefs();
       rerenderTableOnly();
       rerenderListOnly();
     });
@@ -628,7 +729,16 @@ function bindPerRenderInputs() {
   const sort = qs("#sortSelect");
   if (sort) {
     sort.addEventListener("change", () => {
-      state.sortKey = sort.value;
+      state.sortKey = safeSortKey(sort.value);
+      saveUiPrefs();
+      renderApp();
+    });
+  }
+
+  const auditActionFilter = qs("#auditActionFilter");
+  if (auditActionFilter) {
+    auditActionFilter.addEventListener("change", () => {
+      state.auditActionFilter = String(auditActionFilter.value || "ALL");
       renderApp();
     });
   }
@@ -641,6 +751,8 @@ function bindPerRenderInputs() {
     const categoriaSelect = form.querySelector('select[name="categoria"]');
     const tipoSelect = form.querySelector('select[name="tipo"]');
     const categoriaAutoHint = form.querySelector("#categoriaAutoHint");
+    const itemSuggestionsWrap = form.querySelector("#itemSuggestionsWrap");
+    const itemSuggestionsList = form.querySelector("#itemSuggestions");
     let autoUpdatingCategory = false;
 
     const setAutoHint = (category) => {
@@ -699,6 +811,43 @@ function bindPerRenderInputs() {
       }
     };
 
+    const renderRecurringSuggestions = () => {
+      if (!itemSuggestionsWrap || !itemSuggestionsList) return;
+      const isEditing = Boolean(currentId());
+      if (isEditing) {
+        itemSuggestionsWrap.style.display = "none";
+        itemSuggestionsList.innerHTML = "";
+        return;
+      }
+
+      const suggestions = buildRecurringItemSuggestions(8);
+      if (!suggestions.length) {
+        itemSuggestionsWrap.style.display = "none";
+        itemSuggestionsList.innerHTML = "";
+        return;
+      }
+
+      itemSuggestionsWrap.style.display = "block";
+      itemSuggestionsList.innerHTML = suggestions
+        .map(
+          (name) =>
+            `<button type="button" class="item-suggest-btn" data-suggest-item="${escapeHtml(name)}">${escapeHtml(name)}</button>`,
+        )
+        .join("");
+
+      itemSuggestionsList.querySelectorAll("[data-suggest-item]").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          const suggestedName = String(btn.dataset.suggestItem || "").trim();
+          if (!suggestedName || !nameInput) return;
+          nameInput.value = suggestedName;
+          form.dataset.categoryManual = "false";
+          refreshCategorySuggestion();
+          nameInput.focus();
+          nameInput.setSelectionRange(nameInput.value.length, nameInput.value.length);
+        });
+      });
+    };
+
     if (categoriaSelect) {
       categoriaSelect.addEventListener("change", () => {
         syncTipo();
@@ -714,6 +863,7 @@ function bindPerRenderInputs() {
     }
     form.addEventListener("shopping:modal-opened", () => {
       refreshCategorySuggestion({ applyAuto: false });
+      renderRecurringSuggestions();
     });
 
     bindCurrencyInputs(form);
@@ -951,15 +1101,52 @@ function bindDelegatedEvents() {
           : "Seu banco não tem lixeira. Excluir permanentemente este item?";
         if (!confirm(deleteMsg)) return;
 
+        const deletedItem = state.items.find((x) => x.id === id) || null;
         await deleteItem(id, state.collaboratorName, "Remoção individual");
         state.items = state.items.filter((x) => x.id !== id);
         state.deletedCount = await countDeletedByPeriod(state.currentPeriod.id);
-        toast.show({
-          title: state.softDeleteEnabled ? "Lixeira" : "Exclusão permanente",
-          message: state.softDeleteEnabled
-            ? "Item movido para a lixeira."
-            : "Item removido permanentemente.",
-        });
+        if (state.softDeleteEnabled && deletedItem) {
+          toast.show({
+            title: "Lixeira",
+            message: "Item movido para a lixeira.",
+            actionLabel: "Desfazer",
+            onAction: async () => {
+              const restored = await restoreDeletedItem(
+                id,
+                state.collaboratorName,
+              );
+              if (!restored) {
+                toast.show({
+                  title: "Desfazer",
+                  message: "Não foi possível restaurar o item.",
+                });
+                return;
+              }
+              state.items = [normalizeItem(restored), ...state.items];
+              state.deletedCount = await countDeletedByPeriod(
+                state.currentPeriod.id,
+              );
+              renderApp();
+              toast.show({
+                title: "Restaurado",
+                message: "Item restaurado da lixeira.",
+              });
+            },
+            duration: 6000,
+          });
+        } else {
+          toast.show({
+            title: state.softDeleteEnabled ? "Lixeira" : "Exclusão permanente",
+            message: state.softDeleteEnabled
+              ? "Item movido para a lixeira."
+              : "Item removido permanentemente.",
+          });
+        }
+        if (state.auditLogEnabled) {
+          try {
+            state.auditLogs = await listAuditLogsByPeriod(state.currentPeriod.id, 50);
+          } catch {}
+        }
         renderApp();
         return;
       }
@@ -1071,6 +1258,11 @@ function bindDelegatedEvents() {
         state.items = state.items.map((it) =>
           normalizeItem({ ...it, valor_unitario: 0 }),
         );
+        if (state.auditLogEnabled) {
+          try {
+            state.auditLogs = await listAuditLogsByPeriod(state.currentPeriod.id, 50);
+          } catch {}
+        }
         toast.show({ title: "Ok", message: "Preços zerados no mês." });
         renderApp();
         return;

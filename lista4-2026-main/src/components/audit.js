@@ -56,7 +56,7 @@ function detailsSummary(details) {
   return parts.length ? parts.join(" • ") : "—";
 }
 
-export function renderAuditLogSection({ enabled, logs, actionFilter }) {
+export function renderAuditLogSection({ enabled, logs, actionFilter, collapsed }) {
   if (!enabled) {
     return `
       <div class="card section" style="margin-top:12px">
@@ -82,6 +82,9 @@ export function renderAuditLogSection({ enabled, logs, actionFilter }) {
           <div class="muted" style="font-size:12px;margin-top:4px">Eventos críticos do período atual</div>
         </div>
         <div class="row" style="gap:8px">
+          <button class="btn small" id="toggleAuditPanel" data-action="toggle-audit-panel">
+            ${collapsed ? "Expandir" : "Recolher"}
+          </button>
           <select id="auditActionFilter" title="Filtrar ação">
             ${ACTION_OPTIONS.map((action) => {
               const label = action === "ALL" ? "Todas ações" : formatAction(action);
@@ -92,6 +95,7 @@ export function renderAuditLogSection({ enabled, logs, actionFilter }) {
         </div>
       </div>
 
+      <div class="audit-content" style="${collapsed ? "display:none" : "display:block"}">
       <div class="muted" style="font-size:12px;margin-top:8px">${filtered.length} registro(s)</div>
 
       <div class="audit-table-wrap" style="margin-top:10px">
@@ -133,7 +137,7 @@ export function renderAuditLogSection({ enabled, logs, actionFilter }) {
           `).join("")
           : `<div class="muted">Sem eventos para o filtro atual.</div>`}
       </div>
+      </div>
     </div>
   `;
 }
-

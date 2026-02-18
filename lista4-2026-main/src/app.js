@@ -5,12 +5,14 @@ import { brl, num, formatQuantidade, isPesoCategoria } from "./utils/format.js";
 import { addMonths, monthKey, periodName } from "./utils/period.js";
 import {
   classifyShoppingCategory,
+  getShoppingCategories,
   normalizeShoppingCategory,
 } from "./utils/shoppingCategories.js";
 
 import { mountToast } from "./components/toast.js";
 import { renderHeader } from "./components/header.js";
 import { renderDashboard } from "./components/dashboard.js";
+import { renderBudgetPanel } from "./components/budget.js";
 import { renderCollaboratorsSummary } from "./components/collaborators.js";
 import {
   renderItemFormModal,
@@ -50,6 +52,7 @@ import {
 const root = document.getElementById("app");
 const toast = mountToast(document.body);
 const UI_PREFS_KEY = "shoppingUiPrefs";
+const BUDGET_STORE_KEY = "shoppingBudgetsByPeriod";
 const ALLOWED_STATUS_FILTERS = new Set(["ALL", "PENDENTE", "COMPRADO"]);
 const ALLOWED_SORT_KEYS = new Set(["name_asc", "value_desc", "value_asc", "created_desc"]);
 
@@ -84,6 +87,21 @@ function saveUiPrefs() {
 
 const uiPrefs = loadUiPrefs();
 
+function loadBudgetStore() {
+  try {
+    const raw = localStorage.getItem(BUDGET_STORE_KEY);
+    if (!raw) return {};
+    const parsed = JSON.parse(raw);
+    return parsed && typeof parsed === "object" ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+
+function saveBudgetStore(store) {
+  localStorage.setItem(BUDGET_STORE_KEY, JSON.stringify(store || {}));
+}
+
 const state = {
   theme: getTheme(),
   collaboratorName: localStorage.getItem("collaboratorName") || "",
@@ -109,6 +127,9 @@ const state = {
   auditLogEnabled: false,
   auditLogs: [],
   auditActionFilter: "ALL",
+  budgets: {},
+  budgetCollapsed: true,
+  auditCollapsed: true,
 
   charts: null,
   delegatedBound: false,
@@ -155,6 +176,62 @@ function totalOfItem(it) {
   const qtd = Number(it.quantidade || 0);
   const unit = num(it.valor_unitario || 0);
   return isPesoCategoria(it.categoria) ? unit : qtd * unit;
+}
+
+function periodBudgetScopeKey() {
+  return String(state.currentPeriod?.id || monthKey(state.cursorDate));
+}
+
+function loadBudgetsForCurrentPeriod() {
+  const store = loadBudgetStore();
+  const key = periodBudgetScopeKey();
+  const scoped = store[key];
+  return scoped && typeof scoped === "object" ? { ...scoped } : {};
+}
+
+function persistBudgetsForCurrentPeriod(nextBudgets) {
+  const store = loadBudgetStore();
+  const key = periodBudgetScopeKey();
+  store[key] = nextBudgets || {};
+  saveBudgetStore(store);
+}
+
+function resolveBudgetCategory(item) {
+  const normalized = normalizeShoppingCategory(item?.categoria);
+  if (normalized === "Churrasco") return "Churrasco";
+  if (normalized !== "Geral") return normalized;
+  const inferred = classifyShoppingCategory(item?.nome || "");
+  return inferred === "Churrasco" ? "Geral" : inferred;
+}
+
+function computeBudgetRows(items) {
+  const categories = getShoppingCategories();
+  const spentMap = new Map(categories.map((category) => [category, 0]));
+
+  for (const item of items || []) {
+    const category = resolveBudgetCategory(item);
+    const current = spentMap.get(category) || 0;
+    spentMap.set(category, current + totalOfItem(item));
+  }
+
+  return categories.map((category) => {
+    const spent = Number((spentMap.get(category) || 0).toFixed(2));
+    const budget = Number(state.budgets?.[category] || 0);
+    const hasBudget = budget > 0;
+    const pct = hasBudget ? (spent / budget) * 100 : 0;
+    let status = "NONE";
+    if (hasBudget && pct > 100) status = "OVER";
+    else if (hasBudget && pct >= 85) status = "ATTENTION";
+    else if (hasBudget) status = "OK";
+
+    return {
+      category,
+      budget,
+      spent,
+      balance: Number((budget - spent).toFixed(2)),
+      status,
+    };
+  });
 }
 
 function buildRecurringItemSuggestions(limit = 8) {
@@ -564,6 +641,7 @@ async function loadDataForPeriod() {
   } else {
     state.auditLogs = [];
   }
+  state.budgets = loadBudgetsForCurrentPeriod();
 
   const collabFilter = String(state.filterCollaborator || "ALL");
   if (collabFilter !== "ALL") {
@@ -608,6 +686,9 @@ function renderApp() {
   const userName = state.collaboratorName || "—";
   const filtered = applyFilters();
   const kpis = computeKPIs(state.items);
+  const budgetRows = computeBudgetRows(state.items);
+  const totalBudget = budgetRows.reduce((acc, row) => acc + Number(row.budget || 0), 0);
+  const totalSpent = budgetRows.reduce((acc, row) => acc + Number(row.spent || 0), 0);
   const byCollab = computeByCollaborator(state.items);
   const economy = computeEconomyInsights(state.items);
 
@@ -623,6 +704,12 @@ function renderApp() {
 
       <div style="margin-top:12px">
         ${renderDashboard(kpis)}
+        ${renderBudgetPanel({
+          rows: budgetRows,
+          totalSpent,
+          totalBudget,
+          collapsed: state.budgetCollapsed,
+        })}
         ${renderCollaboratorsSummary(byCollab)}
       </div>
 
@@ -643,6 +730,7 @@ function renderApp() {
           enabled: state.auditLogEnabled,
           logs: state.auditLogs,
           actionFilter: state.auditActionFilter,
+          collapsed: state.auditCollapsed,
         })}
       </div>
 
@@ -739,6 +827,44 @@ function bindPerRenderInputs() {
   if (auditActionFilter) {
     auditActionFilter.addEventListener("change", () => {
       state.auditActionFilter = String(auditActionFilter.value || "ALL");
+      renderApp();
+    });
+  }
+
+  const toggleAuditBtn = qs("#toggleAuditPanel");
+  if (toggleAuditBtn) {
+    toggleAuditBtn.addEventListener("click", () => {
+      state.auditCollapsed = !state.auditCollapsed;
+      saveUiPrefs();
+      renderApp();
+    });
+  }
+
+  bindCurrencyInputs(root);
+
+  qsa(".budget-input").forEach((input) => {
+    input.addEventListener("change", () => {
+      const category = String(input.dataset.budgetCategory || "").trim();
+      if (!category) return;
+      const raw = parseCurrencyBRL(input.value || 0);
+      const value = Number.isFinite(raw) && raw > 0 ? Number(raw.toFixed(2)) : 0;
+      if (value > 0) {
+        state.budgets = { ...state.budgets, [category]: value };
+      } else {
+        const next = { ...state.budgets };
+        delete next[category];
+        state.budgets = next;
+      }
+      persistBudgetsForCurrentPeriod(state.budgets);
+      renderApp();
+    });
+  });
+
+  const toggleBudgetBtn = qs("#toggleBudgetPanel");
+  if (toggleBudgetBtn) {
+    toggleBudgetBtn.addEventListener("click", () => {
+      state.budgetCollapsed = !state.budgetCollapsed;
+      saveUiPrefs();
       renderApp();
     });
   }

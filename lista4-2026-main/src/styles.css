@@ -603,6 +603,47 @@ table tbody tr:hover{
 .audit-mobile{
   display: none;
 }
+.budget-mobile{
+  display: none;
+}
+.budget-panel.section{
+  padding: 10px;
+}
+.budget-panel h2{
+  font-size: 15px;
+}
+.budget-panel .muted{
+  font-size: 11px;
+}
+.budget-panel table th,
+.budget-panel table td{
+  padding: 6px 8px;
+  font-size: 12px;
+}
+.budget-card{
+  padding: 8px;
+  margin-bottom: 6px;
+}
+.budget-input{
+  min-width: 82px;
+  padding: 6px 8px;
+  font-size: 12px;
+  border-radius: 10px;
+}
+.budget-table-wrap table tbody tr.budget-row td{
+  background: var(--cat-pending-bg);
+  border-top-color: var(--cat-pending-border);
+  border-bottom-color: var(--cat-pending-border);
+}
+.budget-table-wrap table tbody tr.budget-row td:first-child{
+  border-left: 4px solid var(--cat-accent);
+}
+[data-theme="light"] .budget-table-wrap table tbody tr.budget-row td{
+  background: color-mix(in srgb, var(--cat-pending-bg) 72%, #fff);
+}
+.budget-table-wrap table tbody tr.budget-row:hover td{
+  background: var(--cat-bought-bg);
+}
 .audit-card{
   background: rgba(255,255,255,.03);
   border: 1px solid var(--border);
@@ -655,6 +696,13 @@ table tbody tr:hover{
   }
   .audit-table-wrap{
     display: none;
+  }
+  .budget-table-wrap{
+    display: none;
+  }
+  .budget-mobile{
+    display: grid;
+    gap: 6px;
   }
   .audit-mobile{
     display: grid;

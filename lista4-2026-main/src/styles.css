@@ -78,6 +78,25 @@
   font-size: 11px;
   white-space: nowrap;
 }
+.category-collapse-btn{
+  width: 30px;
+  height: 28px;
+  padding: 0;
+  border-radius: 9px;
+  font-size: 14px;
+  line-height: 1;
+  white-space: nowrap;
+  border: 1px solid var(--cat-pending-border);
+  border-left-width: 3px;
+  border-left-color: var(--cat-accent);
+  background: linear-gradient(180deg, var(--cat-head-bg), var(--card) 80%);
+}
+.table-wrap.is-collapsed{
+  display: none;
+}
+.mobile-list.is-collapsed{
+  display: none !important;
+}
 .row.category-shortcuts{
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));

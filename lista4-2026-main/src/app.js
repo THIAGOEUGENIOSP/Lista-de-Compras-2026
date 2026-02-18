@@ -88,6 +88,7 @@ function saveUiPrefs() {
     filterCollaborator: state.filterCollaborator,
     searchText: state.searchText,
     sortKey: state.sortKey,
+    collapsedCategoryAnchors: state.collapsedCategoryAnchors,
   };
   localStorage.setItem(UI_PREFS_KEY, JSON.stringify(payload));
 }
@@ -137,6 +138,11 @@ const state = {
   budgets: {},
   budgetCollapsed: true,
   auditCollapsed: true,
+  collapsedCategoryAnchors:
+    uiPrefs.collapsedCategoryAnchors &&
+    typeof uiPrefs.collapsedCategoryAnchors === "object"
+      ? { ...uiPrefs.collapsedCategoryAnchors }
+      : {},
   sharedCategoryLearningEnabled: false,
 
   charts: null,
@@ -498,6 +504,33 @@ function computeEconomyInsights(items) {
     .map((it) => it.nome || "—")
     .slice(0, 5);
 
+  const boughtItems = items.filter((it) => it.status === "COMPRADO");
+  const boughtByCountMap = new Map();
+  const boughtByValueMap = new Map();
+  for (const it of boughtItems) {
+    const key = normalizeNameKey(it.nome || "");
+    const label = String(it.nome || "—").trim() || "—";
+    if (!key) continue;
+
+    const countRow = boughtByCountMap.get(key) || { label, count: 0 };
+    countRow.count += 1;
+    boughtByCountMap.set(key, countRow);
+
+    const valueRow = boughtByValueMap.get(key) || { label, total: 0 };
+    valueRow.total += totalOfItem(it);
+    boughtByValueMap.set(key, valueRow);
+  }
+
+  const topBoughtByCount = Array.from(boughtByCountMap.values())
+    .sort((a, b) => b.count - a.count || a.label.localeCompare(b.label, "pt-BR"))
+    .slice(0, 10)
+    .map((row) => `${row.label} • ${row.count}x`);
+
+  const topBoughtByValue = Array.from(boughtByValueMap.values())
+    .sort((a, b) => b.total - a.total || a.label.localeCompare(b.label, "pt-BR"))
+    .slice(0, 10)
+    .map((row) => `${row.label} • ${brl(row.total)}`);
+
   const tips = [];
   if (wastePct >= 20) {
     tips.push("Supérfluos acima de 20% do total — revise prioridades.");
@@ -523,6 +556,8 @@ function computeEconomyInsights(items) {
     priceyItems: priceyItems.map((x) => `${x.name} • ${brl(x.total)}`),
     duplicates,
     zeroPrice,
+    topBoughtByCount,
+    topBoughtByValue,
     tips,
   };
 }
@@ -585,14 +620,22 @@ function rerenderListOnly() {
   const listWrap = document.querySelector(".mobile-list-wrap");
   if (!listWrap) return;
   const filtered = applyFilters();
-  listWrap.outerHTML = renderItemMobileList(filtered, state.sortKey);
+  listWrap.outerHTML = renderItemMobileList(
+    filtered,
+    state.sortKey,
+    state.collapsedCategoryAnchors,
+  );
 }
 
 function rerenderTableOnly() {
   const tableWrap = document.querySelector(".table-list-wrap");
   if (!tableWrap) return;
   const filtered = applyFilters();
-  tableWrap.outerHTML = renderItemTable(filtered, state.sortKey);
+  tableWrap.outerHTML = renderItemTable(
+    filtered,
+    state.sortKey,
+    state.collapsedCategoryAnchors,
+  );
 }
 
 function renderNameGate() {
@@ -739,8 +782,8 @@ function renderApp() {
       <div class="grid main" style="margin-top:12px">
         <div>
           ${renderItemListControls(state)}
-          ${renderItemTable(filtered, state.sortKey)}
-          ${renderItemMobileList(filtered, state.sortKey)}
+          ${renderItemTable(filtered, state.sortKey, state.collapsedCategoryAnchors)}
+          ${renderItemMobileList(filtered, state.sortKey, state.collapsedCategoryAnchors)}
         </div>
       </div>
 
@@ -1202,6 +1245,19 @@ function bindDelegatedEvents() {
         }
 
         target.scrollIntoView({ behavior: "smooth", block: "start" });
+        return;
+      }
+
+      if (action === "toggle-category-section") {
+        const anchor = String(el.dataset.categoryAnchor || "").trim();
+        if (!anchor) return;
+        const current = Boolean(state.collapsedCategoryAnchors?.[anchor]);
+        state.collapsedCategoryAnchors = {
+          ...state.collapsedCategoryAnchors,
+          [anchor]: !current,
+        };
+        saveUiPrefs();
+        renderApp();
         return;
       }
 

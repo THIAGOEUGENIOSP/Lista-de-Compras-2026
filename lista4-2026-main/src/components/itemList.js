@@ -119,13 +119,20 @@ function renderSummaryRow(items, forChurrasco) {
   `;
 }
 
-function renderTableBlock({ title, items, showCategory, category }) {
+function renderTableBlock({
+  title,
+  items,
+  showCategory,
+  category,
+  collapsedByCategory = {},
+}) {
   const categoryLabel =
     normalizeShoppingCategory(category) ||
     String(title || "").split("•")[1]?.trim() ||
     "Geral";
   const meta = getCategoryMeta(categoryLabel);
   const anchor = escapeHtml(toCategoryAnchor(categoryLabel));
+  const isCollapsed = Boolean(collapsedByCategory?.[anchor]);
   return `
   <div class="card section only-desktop category-desktop-block ${meta.className}" style="margin-top:12px" data-category-anchor="${anchor}">
     <div class="category-block category-pill-head ${meta.className}">
@@ -136,12 +143,23 @@ function renderTableBlock({ title, items, showCategory, category }) {
         </div>
         <div class="category-head-sub">
           <div class="cat-count">${items.length} item(ns)</div>
-          <button class="btn small category-top-btn" data-action="scroll-top">Início</button>
+          <div class="row" style="gap:6px">
+            <button
+              class="btn small category-collapse-btn"
+              data-action="toggle-category-section"
+              data-category-anchor="${anchor}"
+              title="${isCollapsed ? "Expandir categoria" : "Recolher categoria"}"
+              aria-label="${isCollapsed ? "Expandir categoria" : "Recolher categoria"}"
+            >
+              ${isCollapsed ? "▸" : "▾"}
+            </button>
+            <button class="btn small category-top-btn" data-action="scroll-top">Início</button>
+          </div>
         </div>
       </div>
     </div>
 
-    <div class="table-wrap" style="margin-top:10px">
+    <div class="table-wrap ${isCollapsed ? "is-collapsed" : ""}" style="margin-top:10px">
       <table class="category-table">
         <thead>
           <tr>
@@ -286,7 +304,7 @@ export function renderItemListControls(state) {
   `;
 }
 
-export function renderItemTable(items, sortKey) {
+export function renderItemTable(items, sortKey, collapsedByCategory = {}) {
   const churrasco = sortItems(items.filter(isChurrasco), sortKey);
   const groupedOthers = groupShoppingItemsByCategory(
     items.filter((it) => !isChurrasco(it)),
@@ -309,6 +327,7 @@ export function renderItemTable(items, sortKey) {
             items: group.items,
             showCategory: true,
             category: group.category,
+            collapsedByCategory,
           });
         })
         .join("")}
@@ -317,12 +336,13 @@ export function renderItemTable(items, sortKey) {
         items: churrasco,
         showCategory: false,
         category: "Churrasco",
+        collapsedByCategory,
       })}
     </div>
   `;
 }
 
-export function renderItemMobileList(items, sortKey) {
+export function renderItemMobileList(items, sortKey, collapsedByCategory = {}) {
   const churrasco = sortItems(items.filter(isChurrasco), sortKey);
   const groupedOthers = groupShoppingItemsByCategory(
     items.filter((it) => !isChurrasco(it)),
@@ -338,13 +358,15 @@ export function renderItemMobileList(items, sortKey) {
   const renderMobileBlock = (title, blockItems, showCategory, categoryLabel) => {
     const safeCategory = normalizeShoppingCategory(categoryLabel || "Geral");
     const meta = getCategoryMeta(safeCategory);
+    const anchor = escapeHtml(toCategoryAnchor(safeCategory));
+    const isCollapsed = Boolean(collapsedByCategory?.[anchor]);
     const { qtd, total } = sumTotals(blockItems);
     const qtdLabel = showCategory
       ? `${qtd.toLocaleString("pt-BR")} un`
       : formatQuantidade(qtd, "Churrasco");
 
     const header = `
-      <div class="card section only-mobile category-block category-pill-head ${meta.className}" style="margin-top:12px" data-category-anchor="${escapeHtml(toCategoryAnchor(safeCategory))}">
+      <div class="card section only-mobile category-block category-pill-head ${meta.className}" style="margin-top:12px" data-category-anchor="${anchor}">
         <div class="category-head">
           <div class="category-title-wrap">
             <span class="cat-dot" aria-hidden="true">${meta.icon}</span>
@@ -352,7 +374,18 @@ export function renderItemMobileList(items, sortKey) {
           </div>
           <div class="category-head-sub">
             <div class="cat-count">${blockItems.length} item(ns)</div>
-            <button class="btn small category-top-btn" data-action="scroll-top">Início</button>
+            <div class="row" style="gap:6px">
+              <button
+                class="btn small category-collapse-btn"
+                data-action="toggle-category-section"
+                data-category-anchor="${anchor}"
+                title="${isCollapsed ? "Expandir categoria" : "Recolher categoria"}"
+                aria-label="${isCollapsed ? "Expandir categoria" : "Recolher categoria"}"
+              >
+                ${isCollapsed ? "▸" : "▾"}
+              </button>
+              <button class="btn small category-top-btn" data-action="scroll-top">Início</button>
+            </div>
           </div>
         </div>
       </div>
@@ -361,7 +394,7 @@ export function renderItemMobileList(items, sortKey) {
     return `
       <div class="category-section ${meta.className}">
         ${header}
-        <div class="mobile-list ${meta.className}" aria-label="Lista mobile ${title}">
+        <div class="mobile-list ${meta.className} ${isCollapsed ? "is-collapsed" : ""}" aria-label="Lista mobile ${title}">
         ${blockItems
           .map((it) => {
             const totalItem = totalOfItem(it);

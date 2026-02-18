@@ -5,6 +5,8 @@ export function renderAnalytics(insights) {
   const priceyItems = agent.priceyItems || [];
   const dupes = agent.duplicates || [];
   const zeroPrice = agent.zeroPrice || [];
+  const topBoughtByCount = agent.topBoughtByCount || [];
+  const topBoughtByValue = agent.topBoughtByValue || [];
 
   return `
   <div class="card section" style="margin-top:12px">
@@ -70,6 +72,27 @@ export function renderAnalytics(insights) {
                   ${dupes.map((x) => `<li>${x}</li>`).join("")}
                 </ul>`
               : `<div class="muted" style="font-size:12px">Nenhum duplicado</div>`}
+          </div>
+        </div>
+
+        <div class="hr"></div>
+
+        <div class="grid" style="grid-template-columns:repeat(2,minmax(0,1fr));gap:12px">
+          <div>
+            <div class="muted" style="font-size:12px;margin-bottom:6px">Top itens comprados (frequência)</div>
+            ${topBoughtByCount.length
+              ? `<ul style="margin:0;padding-left:16px">
+                  ${topBoughtByCount.map((x) => `<li>${x}</li>`).join("")}
+                </ul>`
+              : `<div class="muted" style="font-size:12px">Sem compras suficientes</div>`}
+          </div>
+          <div>
+            <div class="muted" style="font-size:12px;margin-bottom:6px">Top itens comprados (valor)</div>
+            ${topBoughtByValue.length
+              ? `<ul style="margin:0;padding-left:16px">
+                  ${topBoughtByValue.map((x) => `<li>${x}</li>`).join("")}
+                </ul>`
+              : `<div class="muted" style="font-size:12px">Sem compras suficientes</div>`}
           </div>
         </div>
 

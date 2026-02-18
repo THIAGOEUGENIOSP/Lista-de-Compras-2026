@@ -4,6 +4,8 @@ export function renderHeader({
   theme,
   deletedCount = 0,
   softDeleteEnabled = false,
+  overBudgetCount = 0,
+  overBudgetTitle = "",
 }) {
   const restoreLabel = softDeleteEnabled
     ? `Restaurar lista do mês (${deletedCount})`
@@ -31,6 +33,9 @@ export function renderHeader({
 
         <button class="btn small" data-action="toggle-theme">${theme === "dark" ? "🌙" : "☀️"} Tema</button>
         <button class="btn small" data-action="scroll-top">Início</button>
+        ${overBudgetCount > 0
+          ? `<div class="badge pending" title="${overBudgetTitle || ""}"><span>⚠</span><span><b>${overBudgetCount}</b> categoria(s) estourada(s)</span></div>`
+          : ""}
 
         <span class="hr" style="width:1px;height:28px;margin:0 6px"></span>
 

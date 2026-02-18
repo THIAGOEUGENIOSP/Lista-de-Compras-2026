@@ -689,6 +689,9 @@ function renderApp() {
   const budgetRows = computeBudgetRows(state.items);
   const totalBudget = budgetRows.reduce((acc, row) => acc + Number(row.budget || 0), 0);
   const totalSpent = budgetRows.reduce((acc, row) => acc + Number(row.spent || 0), 0);
+  const overBudgetCategories = budgetRows
+    .filter((row) => row.status === "OVER")
+    .map((row) => row.category);
   const byCollab = computeByCollaborator(state.items);
   const economy = computeEconomyInsights(state.items);
 
@@ -700,6 +703,8 @@ function renderApp() {
         theme: state.theme,
         deletedCount: state.deletedCount,
         softDeleteEnabled: state.softDeleteEnabled,
+        overBudgetCount: overBudgetCategories.length,
+        overBudgetTitle: overBudgetCategories.join(" • "),
       })}
 
       <div style="margin-top:12px">

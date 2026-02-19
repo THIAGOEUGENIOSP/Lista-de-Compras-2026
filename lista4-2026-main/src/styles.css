@@ -97,6 +97,20 @@
 .mobile-list.is-collapsed{
   display: none !important;
 }
+.category-section .table-wrap,
+.category-section .mobile-list,
+.category-desktop-block .table-wrap{
+  opacity: 1;
+  transform: translateY(0);
+  transition: opacity .18s ease, transform .18s ease, box-shadow .18s ease;
+  will-change: opacity, transform;
+}
+.category-section .table-wrap.is-collapsed,
+.category-section .mobile-list.is-collapsed,
+.category-desktop-block .table-wrap.is-collapsed{
+  opacity: 0;
+  transform: translateY(-4px);
+}
 .row.category-shortcuts{
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));

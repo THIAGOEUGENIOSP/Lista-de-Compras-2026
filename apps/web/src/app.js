@@ -1186,6 +1186,9 @@ function bindPerRenderInputs() {
 }
 
 function bindDelegatedEvents() {
+  let categoryFocusTimer = null;
+  let shortcutFocusTimer = null;
+
   root.addEventListener("click", async (e) => {
     const el = e.target.closest("[data-action]");
     if (!el) return;
@@ -1239,7 +1242,27 @@ function bindDelegatedEvents() {
           return;
         }
 
+        document
+          .querySelectorAll(".category-shortcut.is-active")
+          .forEach((node) => node.classList.remove("is-active"));
+        el.classList.add("is-active");
+        if (shortcutFocusTimer) clearTimeout(shortcutFocusTimer);
+        shortcutFocusTimer = setTimeout(() => {
+          el.classList.remove("is-active");
+        }, 1300);
+
+        document
+          .querySelectorAll(".category-block.is-focus-pulse, .category-desktop-block.is-focus-pulse")
+          .forEach((node) => node.classList.remove("is-focus-pulse"));
+
         target.scrollIntoView({ behavior: "smooth", block: "start" });
+        window.setTimeout(() => {
+          target.classList.add("is-focus-pulse");
+          if (categoryFocusTimer) clearTimeout(categoryFocusTimer);
+          categoryFocusTimer = setTimeout(() => {
+            target.classList.remove("is-focus-pulse");
+          }, 1500);
+        }, 220);
         return;
       }
 

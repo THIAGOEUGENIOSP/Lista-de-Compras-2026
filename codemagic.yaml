@@ -1,0 +1,85 @@
+workflows:
+  android_release:
+    name: Android Release (Capacitor)
+    instance_type: linux_x2
+    max_build_duration: 60
+    triggering:
+      events:
+        - push
+      branch_patterns:
+        - pattern: main
+          include: true
+          source: true
+    environment:
+      node: 20.15.0
+      java: 17
+    scripts:
+      - name: Install mobile dependencies
+        script: |
+          cd apps/mobile
+          npm ci
+      - name: Sync Capacitor Android
+        script: |
+          cd apps/mobile
+          npx cap add android || true
+          npx cap sync android
+      - name: Build Android artifacts
+        script: |
+          cd apps/mobile/android
+          ./gradlew bundleRelease
+          ./gradlew assembleRelease
+    artifacts:
+      - apps/mobile/android/app/build/outputs/**/*.aab
+      - apps/mobile/android/app/build/outputs/**/*.apk
+
+  ios_release:
+    name: iOS Release (Capacitor)
+    instance_type: mac_mini_m2
+    max_build_duration: 120
+    triggering:
+      events:
+        - push
+      branch_patterns:
+        - pattern: main
+          include: true
+          source: true
+    integrations:
+      app_store_connect: codemagic_appstore
+    environment:
+      node: 20.15.0
+      xcode: latest
+      cocoapods: default
+      ios_signing:
+        distribution_type: app_store
+        bundle_identifier: com.thiago.listacompras
+      vars:
+        XCODE_WORKSPACE: "App.xcworkspace"
+        XCODE_SCHEME: "App"
+    scripts:
+      - name: Install mobile dependencies
+        script: |
+          cd apps/mobile
+          npm ci
+      - name: Sync Capacitor iOS
+        script: |
+          cd apps/mobile
+          npx cap add ios || true
+          npx cap sync ios
+      - name: Set up code signing
+        script: |
+          xcode-project use-profiles
+      - name: Build signed IPA
+        script: |
+          cd apps/mobile/ios/App
+          xcode-project build-ipa \
+            --workspace "$XCODE_WORKSPACE" \
+            --scheme "$XCODE_SCHEME"
+    artifacts:
+      - apps/mobile/ios/App/build/ios/ipa/*.ipa
+      - /tmp/xcodebuild_logs/*.log
+    publishing:
+      app_store_connect:
+        auth: integration
+        submit_to_testflight: true
+        beta_groups:
+          - Internal

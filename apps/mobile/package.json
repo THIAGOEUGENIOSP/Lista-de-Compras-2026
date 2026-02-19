@@ -1,0 +1,15 @@
+{
+  "name": "lista-compras-mobile",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Wrapper mobile (Capacitor) para a versão web em apps/web",
+  "scripts": {
+    "install:cap": "npm i @capacitor/core @capacitor/cli @capacitor/android @capacitor/ios",
+    "cap:sync": "npx cap sync",
+    "cap:copy": "npx cap copy",
+    "cap:android": "npx cap add android",
+    "cap:ios": "npx cap add ios",
+    "open:android": "npx cap open android",
+    "open:ios": "npx cap open ios"
+  }
+}

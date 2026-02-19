@@ -1,0 +1,6 @@
+{
+  "appId": "com.thiago.listacompras",
+  "appName": "Lista de Compras",
+  "webDir": "../web",
+  "bundledWebRuntime": false
+}

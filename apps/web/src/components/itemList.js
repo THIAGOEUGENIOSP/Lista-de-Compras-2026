@@ -132,7 +132,7 @@ function renderTableBlock({
     "Geral";
   const meta = getCategoryMeta(categoryLabel);
   const anchor = escapeHtml(toCategoryAnchor(categoryLabel));
-  const isCollapsed = Boolean(collapsedByCategory?.[anchor]);
+  const isCollapsed = collapsedByCategory?.[anchor] !== false;
   return `
   <div class="card section only-desktop category-desktop-block ${meta.className}" style="margin-top:12px" data-category-anchor="${anchor}">
     <div class="category-block category-pill-head ${meta.className}">
@@ -359,7 +359,7 @@ export function renderItemMobileList(items, sortKey, collapsedByCategory = {}) {
     const safeCategory = normalizeShoppingCategory(categoryLabel || "Geral");
     const meta = getCategoryMeta(safeCategory);
     const anchor = escapeHtml(toCategoryAnchor(safeCategory));
-    const isCollapsed = Boolean(collapsedByCategory?.[anchor]);
+    const isCollapsed = collapsedByCategory?.[anchor] !== false;
     const { qtd, total } = sumTotals(blockItems);
     const qtdLabel = showCategory
       ? `${qtd.toLocaleString("pt-BR")} un`

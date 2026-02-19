@@ -88,7 +88,6 @@ function saveUiPrefs() {
     filterCollaborator: state.filterCollaborator,
     searchText: state.searchText,
     sortKey: state.sortKey,
-    collapsedCategoryAnchors: state.collapsedCategoryAnchors,
   };
   localStorage.setItem(UI_PREFS_KEY, JSON.stringify(payload));
 }
@@ -138,11 +137,7 @@ const state = {
   budgets: {},
   budgetCollapsed: true,
   auditCollapsed: true,
-  collapsedCategoryAnchors:
-    uiPrefs.collapsedCategoryAnchors &&
-    typeof uiPrefs.collapsedCategoryAnchors === "object"
-      ? { ...uiPrefs.collapsedCategoryAnchors }
-      : {},
+  collapsedCategoryAnchors: {},
   sharedCategoryLearningEnabled: false,
 
   charts: null,
@@ -1251,12 +1246,11 @@ function bindDelegatedEvents() {
       if (action === "toggle-category-section") {
         const anchor = String(el.dataset.categoryAnchor || "").trim();
         if (!anchor) return;
-        const current = Boolean(state.collapsedCategoryAnchors?.[anchor]);
+        const current = state.collapsedCategoryAnchors?.[anchor] !== false;
         state.collapsedCategoryAnchors = {
           ...state.collapsedCategoryAnchors,
           [anchor]: !current,
         };
-        saveUiPrefs();
         renderApp();
         return;
       }

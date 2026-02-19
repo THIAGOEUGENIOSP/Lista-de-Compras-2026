@@ -4,12 +4,18 @@
   "private": true,
   "description": "Wrapper mobile (Capacitor) para a versão web em apps/web",
   "scripts": {
-    "install:cap": "npm i @capacitor/core @capacitor/cli @capacitor/android @capacitor/ios",
+    "install:cap": "npm i @capacitor/core@7 @capacitor/cli@7 @capacitor/android@7 @capacitor/ios@7",
     "cap:sync": "npx cap sync",
     "cap:copy": "npx cap copy",
     "cap:android": "npx cap add android",
     "cap:ios": "npx cap add ios",
     "open:android": "npx cap open android",
     "open:ios": "npx cap open ios"
+  },
+  "dependencies": {
+    "@capacitor/android": "^7.5.0",
+    "@capacitor/cli": "^7.5.0",
+    "@capacitor/core": "^7.5.0",
+    "@capacitor/ios": "^7.5.0"
   }
 }

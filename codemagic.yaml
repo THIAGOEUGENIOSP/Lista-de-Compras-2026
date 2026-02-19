@@ -11,7 +11,7 @@ workflows:
           source: true
     environment:
       node: 20.15.0
-      java: 17
+      java: 21
     scripts:
       - name: Install mobile dependencies
         script: |

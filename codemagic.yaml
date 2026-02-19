@@ -25,6 +25,7 @@ workflows:
       - name: Build Android artifacts
         script: |
           cd apps/mobile/android
+          chmod +x ./gradlew
           ./gradlew bundleRelease
           ./gradlew assembleRelease
     artifacts:

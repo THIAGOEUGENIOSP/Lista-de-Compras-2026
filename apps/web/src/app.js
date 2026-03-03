@@ -139,6 +139,8 @@ const state = {
   auditCollapsed: true,
   collapsedCategoryAnchors: {},
   sharedCategoryLearningEnabled: false,
+  showBought: false,
+  showPending: true,
 
   charts: null,
   delegatedBound: false,
@@ -618,7 +620,9 @@ function rerenderListOnly() {
   listWrap.outerHTML = renderItemMobileList(
     filtered,
     state.sortKey,
-    state.collapsedCategoryAnchors,
+    state.searchText,
+    state.showBought,
+    state.showPending,
   );
 }
 
@@ -629,7 +633,9 @@ function rerenderTableOnly() {
   tableWrap.outerHTML = renderItemTable(
     filtered,
     state.sortKey,
-    state.collapsedCategoryAnchors,
+    state.searchText,
+    state.showBought,
+    state.showPending,
   );
 }
 
@@ -777,8 +783,8 @@ function renderApp() {
       <div class="grid main" style="margin-top:12px">
         <div>
           ${renderItemListControls(state)}
-          ${renderItemTable(filtered, state.sortKey, state.collapsedCategoryAnchors)}
-          ${renderItemMobileList(filtered, state.sortKey, state.collapsedCategoryAnchors)}
+          ${renderItemTable(filtered, state.sortKey, state.searchText, state.showBought, state.showPending)}
+          ${renderItemMobileList(filtered, state.sortKey, state.searchText, state.showBought, state.showPending)}
         </div>
       </div>
 
@@ -1266,15 +1272,17 @@ function bindDelegatedEvents() {
         return;
       }
 
-      if (action === "toggle-category-section") {
-        const anchor = String(el.dataset.categoryAnchor || "").trim();
-        if (!anchor) return;
-        const current = state.collapsedCategoryAnchors?.[anchor] !== false;
-        state.collapsedCategoryAnchors = {
-          ...state.collapsedCategoryAnchors,
-          [anchor]: !current,
-        };
-        renderApp();
+      if (action === "toggle-bought") {
+        const inBlock = el.closest(".category-block, .category-desktop-block");
+        const title = inBlock?.querySelector(".cat-title")?.textContent || "";
+        const lower = title.toLowerCase();
+        if (lower.includes("comprados")) {
+          state.showBought = !state.showBought;
+        } else if (lower.includes("pendentes")) {
+          state.showPending = !state.showPending;
+        }
+        rerenderTableOnly();
+        rerenderListOnly();
         return;
       }
 

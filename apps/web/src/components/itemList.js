@@ -1,11 +1,6 @@
 // src/components/itemList.js
 import { brl, formatQuantidade, isPesoCategoria } from "../utils/format.js";
-import {
-  getCategoryMeta,
-  groupShoppingItemsByCategory,
-  normalizeShoppingCategory,
-  toCategoryAnchor,
-} from "../utils/shoppingCategories.js";
+import { getCategoryMeta, normalizeShoppingCategory } from "../utils/shoppingCategories.js";
 
 function collabName(it) {
   return (
@@ -41,14 +36,6 @@ function escapeHtml(value) {
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&#39;");
-}
-
-function availableCategoryShortcuts(items) {
-  const general = groupShoppingItemsByCategory(
-    (items || []).filter((it) => !isChurrasco(it)),
-  ).map((g) => g.category);
-  const hasChurrasco = (items || []).some((it) => isChurrasco(it));
-  return hasChurrasco ? [...general, "Churrasco"] : general;
 }
 
 function isChurrasco(it) {
@@ -122,44 +109,28 @@ function renderSummaryRow(items, forChurrasco) {
 function renderTableBlock({
   title,
   items,
-  showCategory,
-  category,
-  collapsedByCategory = {},
+  metaClass = "",
+  icon = "",
+  showSummary = true,
+  toggleLabel = "",
+  isCollapsed = false,
 }) {
-  const categoryLabel =
-    normalizeShoppingCategory(category) ||
-    String(title || "").split("•")[1]?.trim() ||
-    "Geral";
-  const meta = getCategoryMeta(categoryLabel);
-  const anchor = escapeHtml(toCategoryAnchor(categoryLabel));
-  const isCollapsed = collapsedByCategory?.[anchor] !== false;
-  return `
-  <div class="card section only-desktop category-desktop-block ${meta.className}" style="margin-top:12px" data-category-anchor="${anchor}">
-    <div class="category-block category-pill-head ${meta.className}">
-      <div class="category-head">
-        <div class="category-title-wrap">
-          <span class="cat-dot" aria-hidden="true">${meta.icon}</span>
-          <h2 class="cat-title">${title}</h2>
-        </div>
-        <div class="category-head-sub">
-          <div class="cat-count">${items.length} item(ns)</div>
-          <div class="row" style="gap:6px">
-            <button
-              class="btn small category-collapse-btn"
-              data-action="toggle-category-section"
-              data-category-anchor="${anchor}"
-              title="${isCollapsed ? "Expandir categoria" : "Recolher categoria"}"
-              aria-label="${isCollapsed ? "Expandir categoria" : "Recolher categoria"}"
-            >
-              ${isCollapsed ? "▸" : "▾"}
-            </button>
-            <button class="btn small category-top-btn" data-action="scroll-top">Início</button>
-          </div>
-        </div>
+  const headSub = `
+    <div class="category-head-sub">
+      <div class="cat-count">${items.length} item(ns)</div>
+      <div class="row" style="gap:6px">
+        <button class="btn small category-collapse-btn" data-action="toggle-bought">
+          ${toggleLabel || "▾"}
+        </button>
+        <button class="btn small category-top-btn" data-action="scroll-top">Início</button>
       </div>
     </div>
+  `;
 
-    <div class="table-wrap ${isCollapsed ? "is-collapsed" : ""}" style="margin-top:10px">
+  const tableHtml = isCollapsed
+    ? ""
+    : `
+    <div class="table-wrap" style="margin-top:10px">
       <table class="category-table">
         <thead>
           <tr>
@@ -193,10 +164,14 @@ function renderTableBlock({
                 ? formatQuantidade(it.quantidade, it.categoria)
                 : it.quantidade;
 
+              const catLabel = normalizeShoppingCategory(it?.categoria || "Geral");
+              const catMeta = getCategoryMeta(catLabel);
+
               return `
-              <tr class="${isBought ? "row-bought" : "row-pending"}">
+              <tr class="${isBought ? "row-bought" : "row-pending"} ${catMeta.className}">
                 <td>
                   <div class="item-name" style="font-weight:700">${it.nome}</div>
+                  <div class="item-cat"><span class="cat-tag ${catMeta.className}">${catLabel}</span></div>
                 </td>
 
                 <td style="min-width:140px">
@@ -226,7 +201,7 @@ function renderTableBlock({
                 <td class="collab-name-cell"><span class="collab-name">${collabName(it)}</span></td>
 
                 <td>
-                   <div class="row actions-row" style="gap:6px">
+                  <div class="row actions-row" style="gap:6px">
                     <button class="btn small" data-action="edit" data-id="${it.id}">Editar</button>
                     <button class="btn small danger" data-action="delete" data-id="${it.id}">Excluir</button>
                   </div>
@@ -235,17 +210,31 @@ function renderTableBlock({
             `;
             })
             .join("")}
-          ${renderSummaryRow(items, !showCategory)}
+          ${showSummary ? renderSummaryRow(items, false) : ""}
         </tbody>
       </table>
     </div>
+  `;
+
+  return `
+  <div class="card section only-desktop category-desktop-block ${metaClass}" style="margin-top:12px">
+    <div class="category-block category-pill-head ${metaClass}">
+      <div class="category-head">
+        <div class="category-title-wrap">
+          <span class="cat-dot" aria-hidden="true">${icon}</span>
+          <h2 class="cat-title">${title}</h2>
+        </div>
+        ${headSub}
+      </div>
+    </div>
+
+    ${tableHtml}
   </div>
   `;
 }
 
 export function renderItemListControls(state) {
   const names = collaboratorOptions(state);
-  const shortcuts = availableCategoryShortcuts(state?.items || []);
   return `
   <div class="card section">
     <div class="row space-between">
@@ -285,116 +274,114 @@ export function renderItemListControls(state) {
         </select>
       </div>
     </div>
-
-    <div class="row category-shortcuts" aria-label="Atalhos de categoria">
-      ${shortcuts.length === 0 ? '<span class="muted" style="font-size:12px">Sem categorias no período.</span>' : ""}
-      ${shortcuts
-        .map((category) => {
-          const meta = getCategoryMeta(category);
-          const anchor = toCategoryAnchor(category);
-          const label =
-            category === "Churrasco"
-              ? "Itens por peso (Carnes, queijos e etc.)"
-              : category;
-          return `<button class="btn small category-shortcut ${meta.className}" data-action="scroll-category" data-category="${escapeHtml(anchor)}" title="${escapeHtml(label)}"><span class="cat-dot" aria-hidden="true">${meta.icon}</span><span class="cat-shortcut-label">${escapeHtml(label)}</span></button>`;
-        })
-        .join("")}
-    </div>
   </div>
   `;
 }
 
-export function renderItemTable(items, sortKey, collapsedByCategory = {}) {
-  const churrasco = sortItems(items.filter(isChurrasco), sortKey);
-  const groupedOthers = groupShoppingItemsByCategory(
-    items.filter((it) => !isChurrasco(it)),
-  ).map((group) => ({
-    ...group,
-    items: sortItems(group.items, sortKey),
-  }));
+export function renderItemTable(
+  items,
+  sortKey,
+  searchText = "",
+  showBought = false,
+  showPending = true,
+) {
+  const hasSearch = String(searchText || "").trim().length > 0;
+  const sorted = sortItems(items, sortKey);
 
-  const generalBlocks = groupedOthers.length
-    ? groupedOthers
-    : [{ category: "Geral", items: [] }];
+  if (hasSearch) {
+    return `
+      <div class="table-list-wrap">
+        ${renderTableBlock({
+          title: "Resultados da busca",
+          items: sorted,
+          metaClass: "cat-general",
+          icon: "🔎",
+          showSummary: false,
+        })}
+      </div>
+    `;
+  }
+
+  const pending = sorted.filter((it) => it.status === "PENDENTE");
+  const bought = sorted.filter((it) => it.status === "COMPRADO");
 
   return `
     <div class="table-list-wrap">
-      ${generalBlocks
-        .map((group) => {
-          const meta = getCategoryMeta(group.category);
-          return renderTableBlock({
-            title: `Lista de Compras • ${group.category}`,
-            items: group.items,
-            showCategory: true,
-            category: group.category,
-            collapsedByCategory,
-          });
-        })
-        .join("")}
       ${renderTableBlock({
-        title: "Itens por peso (Carnes, queijos e etc.)",
-        items: churrasco,
-        showCategory: false,
-        category: "Churrasco",
-        collapsedByCategory,
+        title: "Pendentes",
+        items: pending,
+        metaClass: "status-pending",
+        icon: "⏳",
+        showSummary: false,
+        toggleLabel: showPending ? "▾" : "▸",
+        isCollapsed: !showPending,
+      })}
+      ${renderTableBlock({
+        title: "Comprados",
+        items: bought,
+        metaClass: "status-bought",
+        icon: "✔️",
+        showSummary: false,
+        toggleLabel: showBought ? "▾" : "▸",
+        isCollapsed: !showBought,
       })}
     </div>
   `;
 }
 
-export function renderItemMobileList(items, sortKey, collapsedByCategory = {}) {
-  const churrasco = sortItems(items.filter(isChurrasco), sortKey);
-  const groupedOthers = groupShoppingItemsByCategory(
-    items.filter((it) => !isChurrasco(it)),
-  ).map((group) => ({
-    ...group,
-    items: sortItems(group.items, sortKey),
-  }));
+export function renderItemMobileList(
+  items,
+  sortKey,
+  searchText = "",
+  showBought = false,
+  showPending = true,
+) {
+  const hasSearch = String(searchText || "").trim().length > 0;
+  const sorted = sortItems(items, sortKey);
 
-  const generalBlocks = groupedOthers.length
-    ? groupedOthers
-    : [{ category: "Geral", items: [] }];
-
-  const renderMobileBlock = (title, blockItems, showCategory, categoryLabel) => {
-    const safeCategory = normalizeShoppingCategory(categoryLabel || "Geral");
-    const meta = getCategoryMeta(safeCategory);
-    const anchor = escapeHtml(toCategoryAnchor(safeCategory));
-    const isCollapsed = collapsedByCategory?.[anchor] !== false;
+  const renderMobileBlock = (
+    title,
+    blockItems,
+    metaClass = "",
+    icon = "",
+    toggleLabel = "",
+    isCollapsed = false,
+    showSummary = true,
+  ) => {
     const { qtd, total } = sumTotals(blockItems);
-    const qtdLabel = showCategory
-      ? `${qtd.toLocaleString("pt-BR")} un`
-      : formatQuantidade(qtd, "Churrasco");
+    const qtdLabel = `${qtd.toLocaleString("pt-BR")} un`;
+
+  const headSub = `
+        <div class="category-head-sub">
+          <div class="cat-count">${blockItems.length} item(ns)</div>
+          <div class="row" style="gap:6px">
+            <button class="btn small category-collapse-btn" data-action="toggle-bought">
+              ${toggleLabel || "▾"}
+            </button>
+            <button class="btn small category-top-btn" data-action="scroll-top">Início</button>
+          </div>
+        </div>
+      `;
 
     const header = `
-      <div class="card section only-mobile category-block category-pill-head ${meta.className}" style="margin-top:12px" data-category-anchor="${anchor}">
+      <div class="card section only-mobile category-block category-pill-head ${metaClass}" style="margin-top:12px">
         <div class="category-head">
           <div class="category-title-wrap">
-            <span class="cat-dot" aria-hidden="true">${meta.icon}</span>
+            <span class="cat-dot" aria-hidden="true">${icon}</span>
             <h2 class="cat-title">${title}</h2>
           </div>
-          <div class="category-head-sub">
-            <div class="cat-count">${blockItems.length} item(ns)</div>
-            <div class="row" style="gap:6px">
-              <button
-                class="btn small category-collapse-btn"
-                data-action="toggle-category-section"
-                data-category-anchor="${anchor}"
-                title="${isCollapsed ? "Expandir categoria" : "Recolher categoria"}"
-                aria-label="${isCollapsed ? "Expandir categoria" : "Recolher categoria"}"
-              >
-                ${isCollapsed ? "▸" : "▾"}
-              </button>
-              <button class="btn small category-top-btn" data-action="scroll-top">Início</button>
-            </div>
-          </div>
+          ${headSub}
         </div>
       </div>
     `;
 
     return `
-      <div class="category-section ${meta.className}">
-        ${header}
-        <div class="mobile-list ${meta.className} ${isCollapsed ? "is-collapsed" : ""}" aria-label="Lista mobile ${title}">
+      ${header}
+      ${
+        isCollapsed
+          ? ""
+          : `
+      <div class="mobile-list ${metaClass}" aria-label="Lista mobile ${title}">
         ${blockItems
           .map((it) => {
             const totalItem = totalOfItem(it);
@@ -404,8 +391,11 @@ export function renderItemMobileList(items, sortKey, collapsedByCategory = {}) {
               ? formatQuantidade(it.quantidade, it.categoria)
               : `${Number(it.quantidade || 0).toLocaleString("pt-BR")} un`;
 
+            const catLabel = normalizeShoppingCategory(it?.categoria || "Geral");
+            const catMeta = getCategoryMeta(catLabel);
+
             return `
-            <div class="mcard ${isBought ? "row-bought" : "row-pending"}">
+            <div class="mcard ${isBought ? "row-bought" : "row-pending"} ${catMeta.className}">
               <div class="mcard-inner">
                 <div class="mcard-header">
                   <div class="mname">${it.nome}</div>
@@ -420,6 +410,7 @@ export function renderItemMobileList(items, sortKey, collapsedByCategory = {}) {
 
                 <div class="mmeta">
                   <span>Por: <b>${collabName(it)}</b></span>
+                  <span class="cat-tag ${catMeta.className}">${catLabel}</span>
                 </div>
 
                 <div class="mrow">
@@ -464,6 +455,9 @@ export function renderItemMobileList(items, sortKey, collapsedByCategory = {}) {
           })
           .join("")}
 
+        ${
+          showSummary
+            ? `
         <div class="mcard summary">
           <div class="mcard-inner">
             <div class="mcard-header">
@@ -478,28 +472,52 @@ export function renderItemMobileList(items, sortKey, collapsedByCategory = {}) {
             </div>
           </div>
         </div>
-        </div>
+        `
+            : ""
+        }
       </div>
+      `
+      }
     `;
   };
 
+  if (hasSearch) {
+    return `
+      <div class="mobile-list-wrap">
+        ${renderMobileBlock(
+          "Resultados da busca",
+          sorted,
+          "cat-general",
+          "🔎",
+          "",
+          false,
+        )}
+      </div>
+    `;
+  }
+
+  const pending = sorted.filter((it) => it.status === "PENDENTE");
+  const bought = sorted.filter((it) => it.status === "COMPRADO");
+
   return `
     <div class="mobile-list-wrap">
-      ${generalBlocks
-        .map((group) =>
-          renderMobileBlock(
-            `Lista de Compras • ${group.category}`,
-            group.items,
-            true,
-            group.category,
-          ),
-        )
-        .join("")}
       ${renderMobileBlock(
-        "Itens por peso (Carnes, queijos e etc.)",
-        churrasco,
+        "Pendentes",
+        pending,
+        "status-pending",
+        "⏳",
+        showPending ? "▾" : "▸",
+        !showPending,
         false,
-        "Churrasco",
+      )}
+      ${renderMobileBlock(
+        "Comprados",
+        bought,
+        "status-bought",
+        "✔️",
+        showBought ? "▾" : "▸",
+        !showBought,
+        false,
       )}
     </div>
   `;

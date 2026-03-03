@@ -314,6 +314,23 @@
   --cat-bought-border: rgba(239,68,68,.66);
 }
 
+.status-pending{
+  --cat-accent: #f59e0b;
+  --cat-head-bg: rgba(245,158,11,.10);
+  --cat-pending-bg: rgba(245,158,11,.12);
+  --cat-pending-border: rgba(245,158,11,.36);
+  --cat-bought-bg: rgba(245,158,11,.22);
+  --cat-bought-border: rgba(245,158,11,.60);
+}
+.status-bought{
+  --cat-accent: #22c55e;
+  --cat-head-bg: rgba(34,197,94,.10);
+  --cat-pending-bg: rgba(34,197,94,.12);
+  --cat-pending-border: rgba(34,197,94,.36);
+  --cat-bought-bg: rgba(34,197,94,.24);
+  --cat-bought-border: rgba(34,197,94,.66);
+}
+
 [data-theme="light"] .cat-clean{
   --cat-head-bg: rgba(34,197,94,.10);
   --cat-pending-bg: rgba(34,197,94,.16);
@@ -812,6 +829,23 @@ table tbody tr:hover{
   overflow: hidden;
 }
 
+.item-cat{
+  margin-top: 4px;
+}
+
+.cat-tag{
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--cat-pending-border);
+  background: var(--cat-head-bg);
+  color: var(--text);
+}
+
 .status-cell{
   min-width: 120px;
 }
@@ -846,11 +880,18 @@ table tbody tr:hover{
 
 /* Linha grifada quando COMPRADO */
 tr.row-bought{
-  opacity: .65;
+  opacity: 1;
+  background: var(--cat-bought-bg, rgba(34,197,94,.12));
+  box-shadow: inset 0 0 0 2px var(--cat-bought-border, rgba(34,197,94,.45));
 }
 
 tr.row-bought td{
   text-decoration: line-through;
+}
+
+tr.row-pending{
+  background: var(--cat-pending-bg, rgba(255,255,255,.07));
+  box-shadow: inset 0 0 0 2px var(--cat-pending-border, rgba(255,255,255,.32));
 }
 
 tr.row-summary td{
@@ -1256,6 +1297,19 @@ tr.row-bought .badge{
  .mobile-list.cat-protein .mcard.row-bought,
  .mobile-list.cat-general .mcard.row-bought,
  .mobile-list.cat-churrasco .mcard.row-bought{
+   background: var(--cat-bought-bg);
+   border-color: var(--cat-bought-border);
+   box-shadow: inset 0 0 0 2px var(--cat-bought-border);
+ }
+ .mcard.row-pending{
+   background: var(--cat-pending-bg);
+   border-color: var(--cat-pending-border);
+   box-shadow: inset 0 0 0 1px rgba(255,255,255,.05);
+ }
+ [data-theme="light"] .mcard.row-pending{
+   box-shadow: inset 0 0 0 1px rgba(17,24,39,.04);
+ }
+ .mcard.row-bought{
    background: var(--cat-bought-bg);
    border-color: var(--cat-bought-border);
    box-shadow: inset 0 0 0 2px var(--cat-bought-border);

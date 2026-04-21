@@ -1405,7 +1405,6 @@ tr.row-summary td {
   font-size: 13px;
   line-height: 1.6;
   color: var(--text);
-  white-space: pre-wrap;
 }
 .ai-line:last-child { margin-bottom: 0; }
 .ai-result-raw { white-space: pre-wrap; font-size: 13px; line-height: 1.6; }

@@ -1306,15 +1306,27 @@ function bindDelegatedEvents() {
           insights: economy,
           onChunk(text) {
             if (responseEl) {
-              responseEl.innerHTML = `<div class="ai-result"><p class="ai-result-raw">${escapeHtml(text)}</p></div>`;
+              responseEl.innerHTML = `<div class="ai-result"><p class="ai-result-raw">${escapeHtml(text.replace(/\r/g, ""))}</p></div>`;
             }
           },
           onDone(text) {
             btn.disabled    = false;
             btn.textContent = "✨ Analisar novamente";
             if (responseEl) {
-              const lines = text.split("\n").filter(Boolean);
-              const html  = lines.map((l) => `<p class="ai-line">${escapeHtml(l)}</p>`).join("");
+              const lines = text
+                .replace(/\r/g, "")
+                .split("\n")
+                .map((l) => l.trim())
+                .filter(Boolean);
+              const html = lines
+                .map((l) => {
+                  const safe = escapeHtml(l)
+                    .replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>")
+                    .replace(/__(.*?)__/g, "<strong>$1</strong>")
+                    .replace(/\*(.*?)\*/g, "<em>$1</em>");
+                  return `<p class="ai-line">${safe}</p>`;
+                })
+                .join("");
               responseEl.innerHTML = `<div class="ai-result">${html}</div>`;
             }
           },

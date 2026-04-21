@@ -1,10 +1,15 @@
-const ANALYZE_URL = "/api/analyze";
-const GROQ_MODEL  = "llama-3.1-8b-instant";
+const ANALYZE_URL    = "/api/analyze";
+const GROQ_DIRECT    = "https://api.groq.com/openai/v1/chat/completions";
+const GROQ_MODEL     = "llama-3.1-8b-instant";
+const LOCAL_KEY_NAME = "groq_local_key";
 
 const SYSTEM_PROMPT =
   "Você é um consultor financeiro doméstico brasileiro especializado em otimizar listas de compras mensais. " +
   "Suas respostas são práticas, curtas, diretas e sempre em português. " +
   "Use emojis relevantes no início de cada sugestão para facilitar a leitura.";
+
+export function getLocalKey()       { return localStorage.getItem(LOCAL_KEY_NAME) || ""; }
+export function saveLocalKey(key)   { key ? localStorage.setItem(LOCAL_KEY_NAME, key) : localStorage.removeItem(LOCAL_KEY_NAME); }
 
 function buildPrompt({ items, totalValue, insights }) {
   const top = items.slice(0, 35);
@@ -41,44 +46,14 @@ ${itemsStr}
 Dê 4–6 sugestões práticas e específicas para reduzir gastos nesta lista. Cada sugestão em uma linha, começando com emoji.`;
 }
 
-export async function analyzeShoppingListStreaming({
-  items,
-  totalValue,
-  insights,
-  onChunk,
-  onDone,
-  onError,
-}) {
-  let res;
-  try {
-    res = await fetch(ANALYZE_URL, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        model: GROQ_MODEL,
-        messages: [
-          { role: "system", content: SYSTEM_PROMPT },
-          { role: "user",   content: buildPrompt({ items, totalValue, insights }) },
-        ],
-        max_tokens: 550,
-        temperature: 0.65,
-      }),
-    });
-  } catch {
-    onError(new Error("Falha de conexão. Verifique sua internet."));
-    return;
-  }
+function buildMessages({ items, totalValue, insights }) {
+  return [
+    { role: "system", content: SYSTEM_PROMPT },
+    { role: "user",   content: buildPrompt({ items, totalValue, insights }) },
+  ];
+}
 
-  if (!res.ok) {
-    let msg = `Erro ${res.status}`;
-    try {
-      const body = await res.json();
-      msg = body?.error?.message || body?.error || msg;
-    } catch {}
-    onError(new Error(msg));
-    return;
-  }
-
+async function streamSSE(res, onChunk, onDone, onError) {
   const reader  = res.body.getReader();
   const decoder = new TextDecoder();
   let fullText  = "";
@@ -107,4 +82,84 @@ export async function analyzeShoppingListStreaming({
   } catch {
     onError(new Error("Leitura interrompida. Tente novamente."));
   }
+}
+
+export async function analyzeShoppingListStreaming({
+  items,
+  totalValue,
+  insights,
+  onChunk,
+  onDone,
+  onError,
+}) {
+  const messages = buildMessages({ items, totalValue, insights });
+  const payload  = { model: GROQ_MODEL, messages, max_tokens: 550, temperature: 0.65 };
+
+  /* --- Tenta proxy Vercel primeiro --- */
+  let proxyFailed = false;
+  try {
+    const res = await fetch(ANALYZE_URL, {
+      method:  "POST",
+      headers: { "Content-Type": "application/json" },
+      body:    JSON.stringify(payload),
+    });
+
+    if (res.ok) {
+      return streamSSE(res, onChunk, onDone, onError);
+    }
+
+    /* Proxy respondeu com erro HTTP */
+    let msg = `Erro ${res.status}`;
+    try {
+      const body = await res.json();
+      msg = body?.error?.message || body?.error || msg;
+    } catch {}
+
+    /* Erro 500 com "não configurada" → proxy existe mas falta a chave no Vercel */
+    if (msg.includes("não configurada")) {
+      proxyFailed = true; // vai tentar com chave local
+    } else {
+      onError(new Error(msg));
+      return;
+    }
+  } catch {
+    /* Proxy não existe (ambiente local) → tenta com chave local */
+    proxyFailed = true;
+  }
+
+  if (!proxyFailed) return;
+
+  /* --- Fallback: chamada direta com chave local --- */
+  const localKey = getLocalKey();
+  if (!localKey) {
+    onError(new Error("NO_LOCAL_KEY"));
+    return;
+  }
+
+  let res;
+  try {
+    res = await fetch(GROQ_DIRECT, {
+      method:  "POST",
+      headers: {
+        "Content-Type":  "application/json",
+        "Authorization": `Bearer ${localKey}`,
+      },
+      body: JSON.stringify({ ...payload, stream: true }),
+    });
+  } catch {
+    onError(new Error("Falha de conexão. Verifique sua internet."));
+    return;
+  }
+
+  if (!res.ok) {
+    let msg = `Erro ${res.status}`;
+    try {
+      const body = await res.json();
+      msg = body?.error?.message || body?.error || msg;
+    } catch {}
+    onError(new Error(msg));
+    return;
+  }
+
+  return streamSSE(res, onChunk, onDone, onError);
 }

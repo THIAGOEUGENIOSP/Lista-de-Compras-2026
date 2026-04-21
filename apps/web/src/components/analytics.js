@@ -61,6 +61,20 @@ export function renderAnalytics(insights) {
 
       <!-- Área de resposta da IA -->
       <div id="ai-response" class="ai-response"></div>
+
+      <!-- Chave local (aparece só quando proxy falha) -->
+      <div id="ai-key-section" class="ai-key-section" style="display:none">
+        <div class="ai-key-label">🔑 Chave API Groq (uso local)</div>
+        <div class="ai-key-row">
+          <input id="ai-key-input" type="password" class="ai-key-input"
+            placeholder="gsk_..." autocomplete="off" spellcheck="false" />
+          <button class="btn primary small" data-action="save-groq-key">Salvar</button>
+          <button class="btn small" data-action="clear-groq-key">Limpar</button>
+        </div>
+        <div class="ai-key-hint">
+          Crie uma chave gratuita em <strong>console.groq.com</strong>. Fica salva só no seu navegador.
+        </div>
+      </div>
     </div>
 
     <div class="hr" style="margin:16px 0"></div>

@@ -55,7 +55,7 @@ import {
   getCategoryLearningCapabilities,
   upsertSharedCategoryCorrection,
 } from "./services/categoryLearning.js";
-import { analyzeShoppingListStreaming } from "./services/groq.js";
+import { analyzeShoppingListStreaming, getLocalKey, saveLocalKey } from "./services/groq.js";
 
 const root = document.getElementById("app");
 const toast = mountToast(document.body);
@@ -826,6 +826,15 @@ function renderApp() {
     state.charts = buildCharts();
   }
 
+  /* Mostra seção de chave local se já houver uma salva */
+  const existingKey = getLocalKey();
+  if (existingKey) {
+    const keySection = document.getElementById("ai-key-section");
+    const keyInput   = document.getElementById("ai-key-input");
+    if (keySection) keySection.style.display = "";
+    if (keyInput)   keyInput.value = existingKey;
+  }
+
   (async () => {
     try {
       const priceBuckets = computePriceBuckets(state.items);
@@ -1312,11 +1321,41 @@ function bindDelegatedEvents() {
           onError(err) {
             btn.disabled    = false;
             btn.textContent = "✨ Analisar lista";
-            if (responseEl) {
+            if (err.message === "NO_LOCAL_KEY") {
+              const keySection = document.getElementById("ai-key-section");
+              if (keySection) {
+                keySection.style.display = "";
+                const existingKey = getLocalKey();
+                const input = document.getElementById("ai-key-input");
+                if (input && existingKey) input.value = existingKey;
+              }
+              if (responseEl) {
+                responseEl.innerHTML = `<div class="ai-error">🔑 Informe sua chave Groq abaixo para usar a IA localmente.</div>`;
+              }
+            } else if (responseEl) {
               responseEl.innerHTML = `<div class="ai-error">❌ ${escapeHtml(err.message)}</div>`;
             }
           },
         });
+        return;
+      }
+
+      if (action === "save-groq-key") {
+        const input = document.getElementById("ai-key-input");
+        const key   = input?.value?.trim();
+        if (!key) { toast.show("Cole a chave antes de salvar.", "warn"); return; }
+        saveLocalKey(key);
+        toast.show("Chave salva! Clique em Analisar lista.", "ok");
+        return;
+      }
+
+      if (action === "clear-groq-key") {
+        saveLocalKey("");
+        const input = document.getElementById("ai-key-input");
+        if (input) input.value = "";
+        const keySection = document.getElementById("ai-key-section");
+        if (keySection) keySection.style.display = "none";
+        toast.show("Chave removida.", "ok");
         return;
       }
 

@@ -28,12 +28,7 @@ function buildPrompt({ items, totalValue, insights }) {
   if (insights.zeroPrice?.length)
     extras.push(`Sem preço definido: ${insights.zeroPrice.slice(0, 4).join(", ")}`);
   if (insights.priceyItems?.length)
-    extras.push(
-      `Itens mais caros vs média: ${insights.priceyItems
-        .slice(0, 3)
-        .map((x) => `${x.name} (R$${x.total.toFixed(2)})`)
-        .join(", ")}`,
-    );
+    extras.push(`Itens mais caros vs média: ${insights.priceyItems.slice(0, 3).join(", ")}`);
 
   return `Lista de compras do mês:
 - Total: R$${Number(totalValue || 0).toFixed(2)} | ${items.length} itens

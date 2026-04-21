@@ -745,6 +745,65 @@ async function computeMonthlySeries() {
   };
 }
 
+async function computeTopItemsAllTime(currentItems = []) {
+  const periods = await listRecentPeriods(12);
+  const historicalIds = periods
+    .filter((p) => p.id !== state.currentPeriod?.id)
+    .map((p) => p.id);
+
+  let historicalItems = [];
+  if (historicalIds.length) {
+    const res = await sb
+      .from("items")
+      .select("nome, quantidade, valor_unitario, status")
+      .in("periodo_id", historicalIds)
+      .eq("status", "COMPRADO");
+    if (!res.error) historicalItems = (res.data || []).map(normalizeItem);
+  }
+
+  const countMap = new Map();
+  for (const it of [...historicalItems, ...currentItems]) {
+    const key = normalizeNameKey(it.nome || "");
+    const label = String(it.nome || "").trim();
+    if (!key || !label) continue;
+    const row = countMap.get(key) || { label, count: 0, total: 0 };
+    row.count += 1;
+    row.total += totalOfItem(it);
+    countMap.set(key, row);
+  }
+
+  return Array.from(countMap.values())
+    .sort((a, b) => b.count - a.count || a.label.localeCompare(b.label, "pt-BR"))
+    .slice(0, 10);
+}
+
+function renderTopItemsList(items) {
+  if (!items.length) {
+    return `<div class="insight-empty">Sem histórico suficiente ainda.</div>`;
+  }
+  const maxCount = items[0].count;
+  const medals = ["🥇", "🥈", "🥉"];
+  return `
+    <div class="top-items-list">
+      ${items
+        .map((item, i) => {
+          const pct = Math.round((item.count / maxCount) * 100);
+          const rank = medals[i] ?? `<span class="top-item-num">${i + 1}</span>`;
+          return `
+            <div class="top-item-row">
+              <span class="top-item-rank">${rank}</span>
+              <span class="top-item-name">${escapeHtml(item.label)}</span>
+              <div class="top-item-bar-wrap">
+                <div class="top-item-bar" style="width:${pct}%"></div>
+              </div>
+              <span class="top-item-count">${item.count}×</span>
+              <span class="top-item-value">${brl(item.total)}</span>
+            </div>`;
+        })
+        .join("")}
+    </div>`;
+}
+
 function renderApp() {
   const periodLabel = state.currentPeriod?.nome || periodName(state.cursorDate);
   const userName = state.collaboratorName || "—";
@@ -848,6 +907,14 @@ function renderApp() {
       });
     } catch (err) {
       toastError("Charts", err, "Falha ao montar gráficos");
+    }
+
+    try {
+      const topItems = await computeTopItemsAllTime(state.items);
+      const el = document.getElementById("top-items-history");
+      if (el) el.innerHTML = renderTopItemsList(topItems);
+    } catch {
+      /* falha silenciosa — recurso não crítico */
     }
   })();
 

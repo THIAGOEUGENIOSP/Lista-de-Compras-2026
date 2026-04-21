@@ -100,6 +100,19 @@ export function renderAnalytics(insights) {
 
     <div class="hr" style="margin:16px 0"></div>
 
+    <!-- Itens mais frequentes -->
+    <div>
+      <h3 style="margin-bottom:4px;font-size:14px;letter-spacing:-.01em">🏆 Itens mais frequentes</h3>
+      <div class="muted" style="font-size:12px;margin-bottom:14px">Compras recorrentes — meses anteriores + mês atual</div>
+      <div id="top-items-history" class="top-items-loading">
+        <div class="top-items-skeleton">
+          ${[100,80,65,55,45].map(w => `<div class="top-item-skel" style="--w:${w}%"></div>`).join("")}
+        </div>
+      </div>
+    </div>
+
+    <div class="hr" style="margin:16px 0"></div>
+
     <!-- Agente Econômico -->
     <div>
       <h3 style="margin-bottom:14px;font-size:14px;letter-spacing:-.01em">🔍 Agente Econômico</h3>

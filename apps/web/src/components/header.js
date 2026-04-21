@@ -8,53 +8,59 @@ export function renderHeader({
   overBudgetTitle = "",
 }) {
   const restoreLabel = softDeleteEnabled
-    ? `Restaurar lista do mês (${deletedCount})`
-    : "Restaurar indisponível (sem migração)";
+    ? `Restaurar (${deletedCount})`
+    : "Restaurar indisponível";
   const purgeLabel = softDeleteEnabled
-    ? `Apagar definitivo da lixeira (${deletedCount})`
-    : "Exclusão definitiva indisponível";
+    ? `Apagar definitivo (${deletedCount})`
+    : "Exclusão indisponível";
+
+  const themeIcon = theme === "dark" ? "🌙" : "☀️";
 
   return `
-  <div class="card section">
-    <div class="row space-between">
-      <div class="row">
-        <div>
-          <h1>Lista de Compras 2026</h1>
-          <div class="muted" style="margin-top:4px">Mensal • Analytics</div>
-        </div>
+  <div class="header-card">
+
+    <!-- Linha 1: Brand + ações do usuário -->
+    <div class="header-row header-row-top">
+      <div class="header-brand">
+        <h1>🛒 Lista de Compras</h1>
+        <div class="sub">2026 · Mensal &amp; Analytics</div>
       </div>
-
-      <div class="row" style="gap:10px">
-        <button class="btn small" data-action="prev-month">◀</button>
-        <div class="badge" title="Período atual"><span>📅</span><span><b>${periodLabel}</b></span></div>
-        <button class="btn small" data-action="next-month">▶</button>
-
-        <span class="hr" style="width:1px;height:28px;margin:0 6px"></span>
-
-        <button class="btn small" data-action="toggle-theme">${theme === "dark" ? "🌙" : "☀️"} Tema</button>
-        <button class="btn small" data-action="scroll-top">Início</button>
-        ${overBudgetCount > 0
-          ? `<div class="badge pending" title="${overBudgetTitle || ""}"><span>⚠</span><span><b>${overBudgetCount}</b> categoria(s) estourada(s)</span></div>`
-          : ""}
-
-        <span class="hr" style="width:1px;height:28px;margin:0 6px"></span>
-
-        <div class="badge" title="Usuário logado"><span>👤</span><span>${userName || "—"}</span></div>
-        <button class="btn small" data-action="logout">Sair</button>
+      <div class="header-user">
+        <div class="user-badge" title="Colaborador">👤 ${userName || "—"}</div>
+        <button class="btn small btn-theme-toggle" data-action="toggle-theme" title="Alternar tema">${themeIcon}</button>
+        <button class="btn small btn-change-name" data-action="logout">Trocar nome</button>
       </div>
     </div>
 
-    <div class="hr"></div>
-
-    <div class="row">
-      <button class="btn" data-action="scroll-top">Início</button>
-      <button class="btn warn" data-action="zero-prices">Zerar preços do mês</button>
-      <button class="btn primary" data-action="copy-next">Copiar lista p/ próximo mês</button>
-      <button class="btn danger" data-action="delete-month">Mover lista do mês p/ lixeira</button>
-      <button class="btn" data-action="restore-month" ${deletedCount > 0 && softDeleteEnabled ? "" : "disabled"}>${restoreLabel}</button>
-      <button class="btn danger" data-action="purge-month" ${deletedCount > 0 && softDeleteEnabled ? "" : "disabled"}>${purgeLabel}</button>
-      <span class="muted" style="font-size:12px">* Operações afetam apenas o período selecionado.</span>
+    <!-- Linha 2: Navegação de período + aviso de orçamento -->
+    <div class="header-row header-row-period">
+      <div class="period-nav">
+        <button class="btn small" data-action="prev-month" title="Mês anterior">◀</button>
+        <div class="period-badge" title="Período atual">📅 <span>${periodLabel}</span></div>
+        <button class="btn small" data-action="next-month" title="Próximo mês">▶</button>
+      </div>
+      ${overBudgetCount > 0
+        ? `<div class="over-budget-badge" title="${overBudgetTitle || ""}">⚠️ <span>${overBudgetCount} categoria(s) estourada(s)</span></div>`
+        : ""}
     </div>
+
+    <!-- Ações administrativas (colapsável) -->
+    <details class="admin-actions">
+      <summary>⚙️ Ações administrativas</summary>
+      <div class="admin-row">
+        <button class="btn warn small"   data-action="zero-prices">🗑️ Zerar preços</button>
+        <button class="btn primary small" data-action="copy-next">📋 Copiar p/ próximo mês</button>
+        <button class="btn danger small" data-action="delete-month">🗑️ Mover p/ lixeira</button>
+        <button class="btn small" data-action="restore-month"
+          ${deletedCount > 0 && softDeleteEnabled ? "" : "disabled"}>${restoreLabel}</button>
+        <button class="btn danger small" data-action="purge-month"
+          ${deletedCount > 0 && softDeleteEnabled ? "" : "disabled"}>${purgeLabel}</button>
+      </div>
+      <p class="admin-note">* Operações afetam apenas o período selecionado.</p>
+    </details>
   </div>
+
+  <!-- FAB: botão flutuante (só mobile) -->
+  <button class="fab-add" data-action="open-add" title="Adicionar item">+</button>
   `;
 }

@@ -55,6 +55,7 @@ import {
   getCategoryLearningCapabilities,
   upsertSharedCategoryCorrection,
 } from "./services/categoryLearning.js";
+import { analyzeShoppingListStreaming } from "./services/groq.js";
 
 const root = document.getElementById("app");
 const toast = mountToast(document.body);
@@ -378,6 +379,7 @@ function computeKPIs(items) {
     boughtValue,
     progressPct,
     avgItemTotal,
+    boughtItems: boughtItems.length,
   };
 }
 
@@ -1269,6 +1271,52 @@ function bindDelegatedEvents() {
             target.classList.remove("is-focus-pulse");
           }, 1500);
         }, 220);
+        return;
+      }
+
+      if (action === "analyze-ai") {
+        const responseEl = document.getElementById("ai-response");
+        const btn        = document.getElementById("btn-analyze-ai") || el;
+
+        btn.disabled    = true;
+        btn.textContent = "⏳ Analisando...";
+        if (responseEl) {
+          responseEl.innerHTML = `
+            <div class="ai-loading">
+              <div class="ai-dots"><span></span><span></span><span></span></div>
+              <span>Analisando sua lista com IA...</span>
+            </div>`;
+        }
+
+        const economy    = computeEconomyInsights(state.items);
+        const totalValue = state.items.reduce((a, it) => a + totalOfItem(it), 0);
+
+        await analyzeShoppingListStreaming({
+          items: state.items,
+          totalValue,
+          insights: economy,
+          onChunk(text) {
+            if (responseEl) {
+              responseEl.innerHTML = `<div class="ai-result"><p class="ai-result-raw">${escapeHtml(text)}</p></div>`;
+            }
+          },
+          onDone(text) {
+            btn.disabled    = false;
+            btn.textContent = "✨ Analisar novamente";
+            if (responseEl) {
+              const lines = text.split("\n").filter(Boolean);
+              const html  = lines.map((l) => `<p class="ai-line">${escapeHtml(l)}</p>`).join("");
+              responseEl.innerHTML = `<div class="ai-result">${html}</div>`;
+            }
+          },
+          onError(err) {
+            btn.disabled    = false;
+            btn.textContent = "✨ Analisar lista";
+            if (responseEl) {
+              responseEl.innerHTML = `<div class="ai-error">❌ ${escapeHtml(err.message)}</div>`;
+            }
+          },
+        });
         return;
       }
 

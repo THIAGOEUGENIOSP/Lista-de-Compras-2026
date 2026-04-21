@@ -235,46 +235,96 @@ function renderTableBlock({
 
 export function renderItemListControls(state) {
   const names = collaboratorOptions(state);
+  const items = state?.items || [];
+  const totalAll     = items.length;
+  const totalPending = items.filter((it) => it.status === "PENDENTE").length;
+  const totalBought  = items.filter((it) => it.status === "COMPRADO").length;
+
+  const isAll     = state.filterStatus === "ALL";
+  const isPending = state.filterStatus === "PENDENTE";
+  const isBought  = state.filterStatus === "COMPRADO";
+
   return `
-  <div class="card section">
-    <div class="row space-between">
-      <div class="row" style="gap:10px">
-        <button class="btn primary" data-action="open-add">+ Adicionar item</button>
+  <div class="card controls-card">
+    <!-- Linha 1: CTA + filtro segmentado -->
+    <div class="controls-top">
+      <button class="btn btn-add-item only-desktop" data-action="open-add">
+        ＋ Adicionar item
+      </button>
 
-        <div class="row" style="gap:6px">
-          <button class="btn small ${state.filterStatus === "ALL" ? "primary" : ""}" data-filter="ALL">Todos</button>
-          <button class="btn small ${state.filterStatus === "PENDENTE" ? "primary" : ""}" data-filter="PENDENTE">Pendentes</button>
-          <button class="btn small ${state.filterStatus === "COMPRADO" ? "primary" : ""}" data-filter="COMPRADO">Comprados</button>
-        </div>
-      </div>
-
-      <div class="row">
-        <select id="collaboratorFilter" title="Filtrar por colaborador">
-          <option value="ALL" ${state.filterCollaborator === "ALL" ? "selected" : ""}>Todos usuários</option>
-          ${names
-            .map(
-              (name) =>
-                `<option value="${escapeHtml(name)}" ${state.filterCollaborator === name ? "selected" : ""}>${escapeHtml(name)}</option>`,
-            )
-            .join("")}
-        </select>
-
-        <input
-          class="input"
-          id="searchInput"
-          placeholder="Buscar item..."
-          value="${state.searchText || ""}"
-        />
-
-        <select id="sortSelect">
-          <option value="created_desc" ${state.sortKey === "created_desc" ? "selected" : ""}>Mais recentes</option>
-          <option value="name_asc" ${state.sortKey === "name_asc" ? "selected" : ""}>Nome (A-Z)</option>
-          <option value="value_desc" ${state.sortKey === "value_desc" ? "selected" : ""}>Maior total</option>
-          <option value="value_asc" ${state.sortKey === "value_asc" ? "selected" : ""}>Menor total</option>
-        </select>
+      <div class="seg-control">
+        <button class="seg-btn ${isAll ? "seg-active" : ""}" data-filter="ALL">
+          Todos
+          <span class="seg-count">${totalAll}</span>
+        </button>
+        <button class="seg-btn ${isPending ? "seg-active" : ""}" data-filter="PENDENTE">
+          ⏳ Pendentes
+          <span class="seg-count">${totalPending}</span>
+        </button>
+        <button class="seg-btn ${isBought ? "seg-active" : ""}" data-filter="COMPRADO">
+          ✅ Comprados
+          <span class="seg-count">${totalBought}</span>
+        </button>
       </div>
     </div>
+
+    <!-- Linha 2: busca + filtros -->
+    <div class="controls-bottom">
+      <div class="search-wrap">
+        <svg class="search-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.75">
+          <circle cx="8.5" cy="8.5" r="5.25"/>
+          <path stroke-linecap="round" d="m12.5 12.5 4 4"/>
+        </svg>
+        <input
+          class="input search-input"
+          id="searchInput"
+          placeholder="Buscar item..."
+          value="${escapeHtml(state.searchText || "")}"
+          autocomplete="off"
+        />
+      </div>
+
+      <select id="collaboratorFilter" title="Filtrar por colaborador">
+        <option value="ALL" ${state.filterCollaborator === "ALL" ? "selected" : ""}>👤 Todos</option>
+        ${names
+          .map(
+            (name) =>
+              `<option value="${escapeHtml(name)}" ${state.filterCollaborator === name ? "selected" : ""}>${escapeHtml(name)}</option>`,
+          )
+          .join("")}
+      </select>
+
+      <select id="sortSelect" title="Ordenar por">
+        <option value="created_desc" ${state.sortKey === "created_desc" ? "selected" : ""}>🕐 Mais recentes</option>
+        <option value="name_asc"     ${state.sortKey === "name_asc"     ? "selected" : ""}>🔤 Nome (A-Z)</option>
+        <option value="value_desc"   ${state.sortKey === "value_desc"   ? "selected" : ""}>💰 Maior valor</option>
+        <option value="value_asc"    ${state.sortKey === "value_asc"    ? "selected" : ""}>💸 Menor valor</option>
+      </select>
+    </div>
   </div>
+  `;
+}
+
+function renderEmptyState(searchText = "") {
+  const hasSearch = String(searchText || "").trim().length > 0;
+  if (hasSearch) {
+    return `
+      <div class="card empty-state">
+        <span class="empty-state-icon">🔍</span>
+        <h3>Nenhum resultado</h3>
+        <p>Nenhum item encontrado para "<strong>${escapeHtml(searchText)}</strong>".<br>Tente outro termo.</p>
+      </div>
+    `;
+  }
+  return `
+    <div class="card empty-state">
+      <span class="empty-state-icon">🛒</span>
+      <h3>Lista vazia</h3>
+      <p>Ainda não há itens neste período.<br>Adicione o primeiro item para começar!</p>
+      <button class="btn btn-add-item" data-action="open-add" style="margin:0 auto">
+        ＋ Adicionar primeiro item
+      </button>
+    </div>
   `;
 }
 
@@ -287,6 +337,10 @@ export function renderItemTable(
 ) {
   const hasSearch = String(searchText || "").trim().length > 0;
   const sorted = sortItems(items, sortKey);
+
+  if (sorted.length === 0) {
+    return renderEmptyState(searchText);
+  }
 
   if (hasSearch) {
     return `
@@ -480,6 +534,10 @@ export function renderItemMobileList(
       }
     `;
   };
+
+  if (sorted.length === 0) {
+    return renderEmptyState(searchText);
+  }
 
   if (hasSearch) {
     return `

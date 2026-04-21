@@ -1,274 +1,343 @@
-// src/components/analytics.js
-export function renderAnalytics(insights) {
-  const agent = insights || {};
-  const wasteItems = agent.wasteItems || [];
-  const priceyItems = agent.priceyItems || [];
-  const dupes = agent.duplicates || [];
-  const zeroPrice = agent.zeroPrice || [];
-  const topBoughtByCount = agent.topBoughtByCount || [];
-  const topBoughtByValue = agent.topBoughtByValue || [];
+import { brl } from "../utils/format.js";
+
+function insightCard({ icon, title, value, sub, items = [], emptyText = "Nenhum encontrado", variant = "" }) {
+  const listHtml = items.length
+    ? `<ul class="insight-list">${items.map((x) => `<li>${x}</li>`).join("")}</ul>`
+    : `<div class="insight-empty">${emptyText}</div>`;
 
   return `
-  <div class="card section" style="margin-top:12px">
-    <div class="row space-between">
+  <div class="insight-card ${variant ? `insight-${variant}` : ""}">
+    <div class="insight-top">
+      <span class="insight-icon">${icon}</span>
+      <div class="insight-meta">
+        <div class="insight-title">${title}</div>
+        ${value ? `<div class="insight-value">${value}</div>` : ""}
+      </div>
+      ${sub ? `<div class="insight-sub-badge">${sub}</div>` : ""}
+    </div>
+    ${listHtml}
+  </div>`;
+}
+
+export function renderAnalytics(insights) {
+  const agent = insights || {};
+  const wasteItems   = (agent.wasteItems   || []).map((x) => `${x.name} — ${brl(x.total)}`);
+  const priceyItems  = (agent.priceyItems  || []).map((x) => `${x.name} — ${brl(x.total)}`);
+  const dupes        = agent.duplicates    || [];
+  const zeroPrice    = agent.zeroPrice     || [];
+  const topByCount   = (agent.topBoughtByCount || []).slice(0, 6);
+  const topByValue   = (agent.topBoughtByValue || []).slice(0, 6);
+  const tips         = agent.tips          || [];
+
+  const wastePct     = agent.wastePct || 0;
+  const wastePctVariant = wastePct >= 20 ? "danger" : wastePct >= 10 ? "warn" : "ok";
+
+  return `
+  <div class="card analytics-card" style="margin-top:12px">
+
+    <!-- Cabeçalho -->
+    <div class="analytics-header">
       <div>
-        <h2>Analytics</h2>
-        <div class="muted" style="font-size:12px;margin-top:4px">
-          Faixas de preço + evolução mensal + pendente vs comprado
-        </div>
+        <h2>📊 Analytics</h2>
+        <div class="muted" style="font-size:12px;margin-top:3px">Insights automáticos, gráficos e Consultor IA</div>
       </div>
     </div>
 
-    <div class="analytics-stack" style="margin-top:12px">
-      <div class="card section">
-        <h3>Agente Econômico</h3>
-        <div class="muted" style="font-size:12px;margin-top:4px">
-          Leitura automática de gastos e oportunidades de economia
+    <!-- IA Advisor -->
+    <div class="ai-advisor">
+      <div class="ai-advisor-top">
+        <div class="ai-info">
+          <div class="ai-labels-row">
+            <span class="ai-badge-pill">✨ Groq IA</span>
+            <span class="ai-model-tag">llama-3.1-8b-instant</span>
+          </div>
+          <div class="ai-title">Consultor de Economia</div>
+          <div class="ai-desc">Analisa sua lista e sugere onde economizar com inteligência artificial</div>
         </div>
-        <div style="margin-top:10px">
-          <div class="row space-between">
-            <div><b>Supérfluos</b></div>
-            <div><b>${agent.wasteTotalLabel || "R$ 0,00"}</b></div>
-          </div>
-          <div class="muted" style="font-size:12px;margin-top:2px">
-            ${agent.wastePctLabel || "0% do total"}
-          </div>
-        </div>
-
-        <div class="hr"></div>
-
-        <div class="grid" style="grid-template-columns:repeat(2,minmax(0,1fr));gap:12px">
-          <div>
-            <div class="muted" style="font-size:12px;margin-bottom:6px">Itens supérfluos (top)</div>
-            ${wasteItems.length
-              ? `<ul style="margin:0;padding-left:16px">
-                  ${wasteItems.map((x) => `<li>${x}</li>`).join("")}
-                </ul>`
-              : `<div class="muted" style="font-size:12px">Nenhum encontrado</div>`}
-          </div>
-          <div>
-            <div class="muted" style="font-size:12px;margin-bottom:6px">Possíveis economias</div>
-            <ul style="margin:0;padding-left:16px">
-              ${(agent.tips || []).map((x) => `<li>${x}</li>`).join("")}
-            </ul>
-          </div>
-        </div>
-
-        <div class="hr"></div>
-
-        <div class="grid" style="grid-template-columns:repeat(2,minmax(0,1fr));gap:12px">
-          <div>
-            <div class="muted" style="font-size:12px;margin-bottom:6px">Itens caros vs média</div>
-            ${priceyItems.length
-              ? `<ul style="margin:0;padding-left:16px">
-                  ${priceyItems.map((x) => `<li>${x}</li>`).join("")}
-                </ul>`
-              : `<div class="muted" style="font-size:12px">Sem alerta</div>`}
-          </div>
-          <div>
-            <div class="muted" style="font-size:12px;margin-bottom:6px">Itens duplicados</div>
-            ${dupes.length
-              ? `<ul style="margin:0;padding-left:16px">
-                  ${dupes.map((x) => `<li>${x}</li>`).join("")}
-                </ul>`
-              : `<div class="muted" style="font-size:12px">Nenhum duplicado</div>`}
-          </div>
-        </div>
-
-        <div class="hr"></div>
-
-        <div class="grid" style="grid-template-columns:repeat(2,minmax(0,1fr));gap:12px">
-          <div>
-            <div class="muted" style="font-size:12px;margin-bottom:6px">Top itens comprados (frequência)</div>
-            ${topBoughtByCount.length
-              ? `<ul style="margin:0;padding-left:16px">
-                  ${topBoughtByCount.map((x) => `<li>${x}</li>`).join("")}
-                </ul>`
-              : `<div class="muted" style="font-size:12px">Sem compras suficientes</div>`}
-          </div>
-          <div>
-            <div class="muted" style="font-size:12px;margin-bottom:6px">Top itens comprados (valor)</div>
-            ${topBoughtByValue.length
-              ? `<ul style="margin:0;padding-left:16px">
-                  ${topBoughtByValue.map((x) => `<li>${x}</li>`).join("")}
-                </ul>`
-              : `<div class="muted" style="font-size:12px">Sem compras suficientes</div>`}
-          </div>
-        </div>
-
-        ${zeroPrice.length
-          ? `
-        <div class="hr"></div>
-        <div>
-          <div class="muted" style="font-size:12px;margin-bottom:6px">Itens com preço zerado</div>
-          <ul style="margin:0;padding-left:16px">
-            ${zeroPrice.map((x) => `<li>${x}</li>`).join("")}
-          </ul>
-        </div>
-        `
-          : ""}
+        <button class="btn primary ai-analyze-btn" data-action="analyze-ai">
+          ✨ Analisar lista
+        </button>
       </div>
 
-      <div class="card section">
-        <h3>Distribuição de preços (unitário)</h3>
-        <div class="muted" style="font-size:12px;margin-top:4px">Até 10 • 10–50 • Acima 50</div>
-        <div class="chart-box">
-          <canvas id="chartPrice"></canvas>
-        </div>
-      </div>
+      <!-- Área de resposta da IA -->
+      <div id="ai-response" class="ai-response"></div>
+    </div>
 
-      <div class="card section">
-        <h3>Evolução mensal de gastos</h3>
-        <div class="muted" style="font-size:12px;margin-top:4px">Total (R$) por período</div>
-        <div class="chart-box">
-          <canvas id="chartMonthly"></canvas>
-        </div>
-      </div>
+    <div class="hr" style="margin:16px 0"></div>
 
-      <div class="card section">
-        <h3>Pendentes vs Comprados</h3>
-        <div class="muted" style="font-size:12px;margin-top:4px">Por quantidade de itens</div>
-        <div class="chart-box">
-          <canvas id="chartStatus"></canvas>
-        </div>
+    <!-- Gráficos em 3 colunas -->
+    <div class="charts-grid">
+      <div class="chart-card">
+        <div class="chart-card-label">💰 Distribuição de preços</div>
+        <div class="chart-card-sub">Unitário por faixa de valor</div>
+        <div class="chart-box"><canvas id="chartPrice"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-card-label">📈 Evolução mensal</div>
+        <div class="chart-card-sub">Total gasto (R$) por período</div>
+        <div class="chart-box"><canvas id="chartMonthly"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-card-label">🍩 Pendentes vs Comprados</div>
+        <div class="chart-card-sub">Proporção por quantidade</div>
+        <div class="chart-box"><canvas id="chartStatus"></canvas></div>
       </div>
     </div>
+
+    <div class="hr" style="margin:16px 0"></div>
+
+    <!-- Agente Econômico -->
+    <div>
+      <h3 style="margin-bottom:14px;font-size:14px;letter-spacing:-.01em">🔍 Agente Econômico</h3>
+
+      <div class="insights-grid">
+        ${insightCard({
+          icon: "🗑️",
+          title: "Supérfluos",
+          value: agent.wasteTotalLabel || "R$ 0,00",
+          sub: `<span class="pct-badge pct-${wastePctVariant}">${agent.wastePctLabel || "0%"}</span>`,
+          items: wasteItems,
+          emptyText: "Nenhum item supérfluo",
+          variant: "warn",
+        })}
+
+        ${insightCard({
+          icon: "💸",
+          title: "Itens acima da média",
+          value: null,
+          sub: null,
+          items: priceyItems,
+          emptyText: "Nenhum item caro detectado",
+          variant: "danger",
+        })}
+
+        ${insightCard({
+          icon: "♻️",
+          title: "Duplicados",
+          value: null,
+          sub: dupes.length ? `<span class="pct-badge pct-warn">${dupes.length} item(s)</span>` : null,
+          items: dupes,
+          emptyText: "Nenhum duplicado encontrado",
+          variant: "info",
+        })}
+
+        ${insightCard({
+          icon: "🏆",
+          title: "Top comprados (freq.)",
+          value: null,
+          sub: null,
+          items: topByCount,
+          emptyText: "Sem dados suficientes",
+          variant: "",
+        })}
+
+        ${insightCard({
+          icon: "💰",
+          title: "Top comprados (valor)",
+          value: null,
+          sub: null,
+          items: topByValue,
+          emptyText: "Sem dados suficientes",
+          variant: "",
+        })}
+
+        ${zeroPrice.length ? insightCard({
+          icon: "⚠️",
+          title: "Sem preço definido",
+          value: null,
+          sub: `<span class="pct-badge pct-warn">${zeroPrice.length} item(s)</span>`,
+          items: zeroPrice,
+          emptyText: "",
+          variant: "warn",
+        }) : ""}
+      </div>
+
+      ${tips.length ? `
+      <div class="tips-section">
+        <div class="tips-title">💡 Dicas automáticas</div>
+        <div class="tips-list">
+          ${tips.map((t) => `<div class="tip-item"><span class="tip-dot"></span><span>${t}</span></div>`).join("")}
+        </div>
+      </div>` : ""}
+    </div>
+
   </div>
   `;
 }
 
+function getChartTheme() {
+  const isLight = document.documentElement.getAttribute("data-theme") === "light";
+  return {
+    text:    isLight ? "#64748b" : "#5d6f8a",
+    grid:    isLight ? "rgba(15,23,42,.06)"   : "rgba(148,163,184,.07)",
+    tooltip: {
+      bg:    isLight ? "#ffffff"  : "#141f30",
+      title: isLight ? "#0f172a"  : "#e2e8f0",
+      body:  isLight ? "#64748b"  : "#94a3b8",
+      border:isLight ? "rgba(15,23,42,.12)" : "rgba(148,163,184,.14)",
+    },
+  };
+}
+
+function tooltipDefaults(t) {
+  return {
+    backgroundColor: t.tooltip.bg,
+    titleColor:      t.tooltip.title,
+    bodyColor:       t.tooltip.body,
+    borderColor:     t.tooltip.border,
+    borderWidth: 1,
+    padding: 10,
+    cornerRadius: 10,
+    displayColors: false,
+  };
+}
+
 export function buildCharts() {
-  const ctxPrice = document.getElementById("chartPrice");
+  const ctxPrice   = document.getElementById("chartPrice");
   const ctxMonthly = document.getElementById("chartMonthly");
-  const ctxStatus = document.getElementById("chartStatus");
+  const ctxStatus  = document.getElementById("chartStatus");
+  if (!ctxPrice || !ctxMonthly || !ctxStatus) return null;
 
-  // Verifica se os elementos existem no DOM
-  if (!ctxPrice || !ctxMonthly || !ctxStatus) {
-    console.warn("Elementos canvas não encontrados no DOM");
-    return null;
-  }
+  const t = getChartTheme();
 
+  Chart.defaults.font.family = "'Inter', system-ui, sans-serif";
+  Chart.defaults.font.size   = 12;
+  Chart.defaults.color       = t.text;
+
+  /* ---- Price distribution (bar) ---- */
   const priceChart = new Chart(ctxPrice, {
     type: "bar",
     data: {
-      labels: ["Até R$ 10", "R$ 10–50", "Acima de R$ 50"],
-      datasets: [{ label: "Itens", data: [0, 0, 0] }],
+      labels: ["Até R$ 10", "R$ 10–50", "Acima R$ 50"],
+      datasets: [{
+        label: "Itens",
+        data: [0, 0, 0],
+        backgroundColor: [
+          "rgba(34,197,94,.70)",
+          "rgba(96,165,250,.70)",
+          "rgba(249,115,22,.70)",
+        ],
+        borderColor: ["#22c55e", "#60a5fa", "#f97316"],
+        borderWidth: 1,
+        borderRadius: 8,
+        borderSkipped: false,
+      }],
     },
     options: {
       responsive: true,
       maintainAspectRatio: false,
-      plugins: { legend: { display: false } },
-    },
-  });
-
-  const valueLabelPlugin = {
-    id: "valueLabel",
-    afterDatasetsDraw(chart, _args, pluginOptions) {
-      const { ctx } = chart;
-      const datasetIndex = 0;
-      const meta = chart.getDatasetMeta(datasetIndex);
-      const data = chart.data.datasets[datasetIndex]?.data || [];
-
-      ctx.save();
-      ctx.textAlign = "center";
-      ctx.textBaseline = "bottom";
-      ctx.font = pluginOptions?.font || "11px system-ui, -apple-system, Segoe UI";
-
-      const area = chart.chartArea;
-      data.forEach((value, i) => {
-        const point = meta.data[i];
-        if (!point) return;
-        const pos = point.getProps(["x", "y"], true);
-        const text = new Intl.NumberFormat("pt-BR", {
-          style: "currency",
-          currency: "BRL",
-        }).format(Number(value || 0));
-        const y = Math.max(pos.y - 8, area.top + 16);
-
-        // fundo para melhorar legibilidade
-        const paddingX = 6;
-        const paddingY = 3;
-        const metrics = ctx.measureText(text);
-        const textW = metrics.width;
-        const textH = 12;
-        const boxW = textW + paddingX * 2;
-        const boxH = textH + paddingY * 2;
-        const boxX = pos.x - boxW / 2;
-        const boxY = y - boxH + 2;
-
-        ctx.fillStyle = pluginOptions?.bg || "rgba(11,14,20,0.75)";
-        const r = 6;
-        ctx.beginPath();
-        ctx.moveTo(boxX + r, boxY);
-        ctx.lineTo(boxX + boxW - r, boxY);
-        ctx.quadraticCurveTo(boxX + boxW, boxY, boxX + boxW, boxY + r);
-        ctx.lineTo(boxX + boxW, boxY + boxH - r);
-        ctx.quadraticCurveTo(boxX + boxW, boxY + boxH, boxX + boxW - r, boxY + boxH);
-        ctx.lineTo(boxX + r, boxY + boxH);
-        ctx.quadraticCurveTo(boxX, boxY + boxH, boxX, boxY + boxH - r);
-        ctx.lineTo(boxX, boxY + r);
-        ctx.quadraticCurveTo(boxX, boxY, boxX + r, boxY);
-        ctx.fill();
-
-        // linha de apoio até o ponto
-        ctx.strokeStyle = pluginOptions?.lineColor || "rgba(148,163,184,0.35)";
-        ctx.lineWidth = 0.8;
-        ctx.beginPath();
-        const lineTop = boxY + boxH;
-        const lineBottom = Math.max(pos.y - 4, lineTop + 10);
-        ctx.moveTo(pos.x, lineTop);
-        ctx.lineTo(pos.x, lineBottom);
-        ctx.stroke();
-
-        ctx.fillStyle = pluginOptions?.color || "#e5e7eb";
-        ctx.fillText(text, pos.x, y);
-      });
-
-      ctx.restore();
-    },
-  };
-
-  const monthlyChart = new Chart(ctxMonthly, {
-    type: "line",
-    data: { labels: [], datasets: [{ label: "Total (R$)", data: [] }] },
-    plugins: [valueLabelPlugin],
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      layout: { padding: { top: 18 } },
       plugins: {
         legend: { display: false },
-        valueLabel: {
-          color: "#ffffff",
-          bg: "rgba(11,14,20,0.94)",
-          lineColor: "rgba(203,213,245,0.6)",
-          font: "11px system-ui, -apple-system, Segoe UI",
+        tooltip: tooltipDefaults(t),
+      },
+      scales: {
+        y: {
+          beginAtZero: true,
+          grid:   { color: t.grid },
+          ticks:  { color: t.text, stepSize: 1 },
+          border: { display: false },
+        },
+        x: {
+          grid:   { display: false },
+          ticks:  { color: t.text },
+          border: { display: false },
         },
       },
     },
   });
 
-  const statusChart = new Chart(ctxStatus, {
-    type: "doughnut",
-    data: { labels: ["Pendentes", "Comprados"], datasets: [{ data: [0, 0] }] },
+  /* ---- Monthly spending (line) ---- */
+  const monthlyChart = new Chart(ctxMonthly, {
+    type: "line",
+    data: {
+      labels: [],
+      datasets: [{
+        label: "Total (R$)",
+        data: [],
+        fill: true,
+        tension: 0.42,
+        borderColor: "#22c55e",
+        borderWidth: 2.5,
+        pointBackgroundColor: "#22c55e",
+        pointBorderColor:    t.tooltip.bg,
+        pointBorderWidth: 2,
+        pointRadius: 5,
+        pointHoverRadius: 7,
+        backgroundColor: "rgba(34,197,94,.09)",
+      }],
+    },
     options: {
       responsive: true,
       maintainAspectRatio: false,
-      plugins: { legend: { position: "bottom" } },
+      layout: { padding: { top: 12 } },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          ...tooltipDefaults(t),
+          callbacks: {
+            label: (ctx) =>
+              ` ${new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(ctx.parsed.y)}`,
+          },
+        },
+      },
+      scales: {
+        y: {
+          grid:   { color: t.grid },
+          ticks:  {
+            color: t.text,
+            callback: (v) =>
+              new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", notation: "compact" }).format(v),
+          },
+          border: { display: false },
+        },
+        x: {
+          grid:   { display: false },
+          ticks:  { color: t.text },
+          border: { display: false },
+        },
+      },
+    },
+  });
+
+  /* ---- Status doughnut ---- */
+  const statusChart = new Chart(ctxStatus, {
+    type: "doughnut",
+    data: {
+      labels: ["Pendentes", "Comprados"],
+      datasets: [{
+        data: [0, 0],
+        backgroundColor: ["rgba(245,158,11,.80)", "rgba(34,197,94,.80)"],
+        borderColor: [t.tooltip.bg, t.tooltip.bg],
+        borderWidth: 3,
+        hoverOffset: 6,
+      }],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      cutout: "65%",
+      plugins: {
+        legend: {
+          position: "bottom",
+          labels: {
+            color: t.text,
+            padding: 16,
+            font: { size: 12 },
+            usePointStyle: true,
+            pointStyleWidth: 8,
+          },
+        },
+        tooltip: tooltipDefaults(t),
+      },
     },
   });
 
   return { priceChart, monthlyChart, statusChart };
 }
 
-export function updateCharts({
-  charts,
-  priceBuckets,
-  monthlySeries,
-  statusCounts,
-}) {
-  // Se os gráficos não foram inicializados, não tenta atualizar
+export function updateCharts({ charts, priceBuckets, monthlySeries, statusCounts }) {
   if (!charts) return;
+
   charts.priceChart.data.datasets[0].data = [
     priceBuckets.at10,
     priceBuckets.between10and50,
@@ -276,13 +345,10 @@ export function updateCharts({
   ];
   charts.priceChart.update();
 
-  charts.monthlyChart.data.labels = monthlySeries.labels;
-  charts.monthlyChart.data.datasets[0].data = monthlySeries.values;
+  charts.monthlyChart.data.labels              = monthlySeries.labels;
+  charts.monthlyChart.data.datasets[0].data    = monthlySeries.values;
   charts.monthlyChart.update();
 
-  charts.statusChart.data.datasets[0].data = [
-    statusCounts.pending,
-    statusCounts.bought,
-  ];
+  charts.statusChart.data.datasets[0].data = [statusCounts.pending, statusCounts.bought];
   charts.statusChart.update();
 }

@@ -21,8 +21,8 @@ function insightCard({ icon, title, value, sub, items = [], emptyText = "Nenhum 
 
 export function renderAnalytics(insights) {
   const agent = insights || {};
-  const wasteItems   = (agent.wasteItems   || []).map((x) => `${x.name} — ${brl(x.total)}`);
-  const priceyItems  = (agent.priceyItems  || []).map((x) => `${x.name} — ${brl(x.total)}`);
+  const wasteItems   = agent.wasteItems  || [];
+  const priceyItems  = agent.priceyItems || [];
   const dupes        = agent.duplicates    || [];
   const zeroPrice    = agent.zeroPrice     || [];
   const topByCount   = (agent.topBoughtByCount || []).slice(0, 6);

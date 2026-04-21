@@ -1,7 +1,7 @@
 {
   "functions": {
     "api/analyze.js": {
-      "runtime": "edge"
+      "runtime": "nodejs@20.x"
     }
   },
   "rewrites": [

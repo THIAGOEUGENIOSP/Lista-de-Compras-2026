@@ -1447,6 +1447,34 @@ tr.row-summary td {
 }
 .ai-key-hint a { color: var(--primary); text-decoration: none; }
 
+/* Collapsible analytics section */
+.section-collapsible { }
+.section-collapsible summary {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  cursor: pointer;
+  list-style: none;
+  user-select: none;
+  padding: 2px 0;
+}
+.section-collapsible summary::-webkit-details-marker { display: none; }
+.section-collapsible summary::before {
+  content: '▸';
+  font-size: 11px;
+  color: var(--muted);
+  flex-shrink: 0;
+  transition: transform var(--trans);
+  position: relative;
+  top: -1px;
+}
+.section-collapsible[open] summary::before { transform: rotate(90deg); }
+.sc-title {
+  font-size: 14px; font-weight: 600;
+  letter-spacing: -.01em; color: var(--text);
+}
+.sc-sub { font-size: 12px; color: var(--muted); }
+
 /* Top items frequency list */
 .top-items-list { display: flex; flex-direction: column; gap: 8px; }
 .top-item-row {

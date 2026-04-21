@@ -100,16 +100,18 @@ export function renderAnalytics(insights) {
 
     <div class="hr" style="margin:16px 0"></div>
 
-    <!-- Itens mais frequentes -->
-    <div>
-      <h3 style="margin-bottom:4px;font-size:14px;letter-spacing:-.01em">🏆 Itens mais frequentes</h3>
-      <div class="muted" style="font-size:12px;margin-bottom:14px">Compras recorrentes — meses anteriores + mês atual</div>
-      <div id="top-items-history" class="top-items-loading">
+    <!-- Itens mais frequentes (colapsável) -->
+    <details class="section-collapsible" open>
+      <summary>
+        <span class="sc-title">🏆 Itens mais frequentes</span>
+        <span class="sc-sub">Compras recorrentes — meses anteriores + mês atual</span>
+      </summary>
+      <div id="top-items-history" class="top-items-loading" style="margin-top:14px">
         <div class="top-items-skeleton">
           ${[100,80,65,55,45].map(w => `<div class="top-item-skel" style="--w:${w}%"></div>`).join("")}
         </div>
       </div>
-    </div>
+    </details>
 
     <div class="hr" style="margin:16px 0"></div>
 
@@ -273,47 +275,66 @@ export function buildCharts() {
     },
   });
 
-  /* ---- Monthly spending (line) ---- */
+  /* ---- Monthly spending (bar) ---- */
+  const brl = (v) =>
+    new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(v);
+  const brlCompact = (v) =>
+    new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", notation: "compact" }).format(v);
+
+  const monthlyBarLabelPlugin = {
+    id: "monthlyBarLabels",
+    afterDatasetsDraw(chart) {
+      const { ctx, data } = chart;
+      const meta = chart.getDatasetMeta(0);
+      meta.data.forEach((bar, i) => {
+        const value = data.datasets[0].data[i];
+        if (!value) return;
+        ctx.save();
+        ctx.font = "600 10px 'Inter', system-ui, sans-serif";
+        ctx.fillStyle = t.text;
+        ctx.textAlign = "center";
+        ctx.textBaseline = "bottom";
+        ctx.fillText(brlCompact(value), bar.x, bar.y - 4);
+        ctx.restore();
+      });
+    },
+  };
+
   const monthlyChart = new Chart(ctxMonthly, {
-    type: "line",
+    type: "bar",
+    plugins: [monthlyBarLabelPlugin],
     data: {
       labels: [],
       datasets: [{
         label: "Total (R$)",
         data: [],
-        fill: true,
-        tension: 0.42,
-        borderColor: "#22c55e",
-        borderWidth: 2.5,
-        pointBackgroundColor: "#22c55e",
-        pointBorderColor:    t.tooltip.bg,
-        pointBorderWidth: 2,
-        pointRadius: 5,
-        pointHoverRadius: 7,
-        backgroundColor: "rgba(34,197,94,.09)",
+        backgroundColor: [],
+        borderColor: [],
+        borderWidth: 0,
+        borderRadius: 8,
+        borderSkipped: false,
       }],
     },
     options: {
       responsive: true,
       maintainAspectRatio: false,
-      layout: { padding: { top: 12 } },
+      layout: { padding: { top: 24 } },
       plugins: {
         legend: { display: false },
         tooltip: {
           ...tooltipDefaults(t),
           callbacks: {
-            label: (ctx) =>
-              ` ${new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(ctx.parsed.y)}`,
+            label: (ctx) => ` ${brl(ctx.parsed.y)}`,
           },
         },
       },
       scales: {
         y: {
+          beginAtZero: true,
           grid:   { color: t.grid },
           ticks:  {
             color: t.text,
-            callback: (v) =>
-              new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", notation: "compact" }).format(v),
+            callback: brlCompact,
           },
           border: { display: false },
         },
@@ -372,8 +393,14 @@ export function updateCharts({ charts, priceBuckets, monthlySeries, statusCounts
   ];
   charts.priceChart.update();
 
-  charts.monthlyChart.data.labels              = monthlySeries.labels;
-  charts.monthlyChart.data.datasets[0].data    = monthlySeries.values;
+  const values  = monthlySeries.values;
+  const maxIdx  = values.length ? values.indexOf(Math.max(...values)) : -1;
+  charts.monthlyChart.data.labels           = monthlySeries.labels;
+  charts.monthlyChart.data.datasets[0].data = values;
+  charts.monthlyChart.data.datasets[0].backgroundColor = values.map((_, i) =>
+    i === maxIdx ? "rgba(249,115,22,.80)" : "rgba(34,197,94,.65)");
+  charts.monthlyChart.data.datasets[0].borderColor = values.map((_, i) =>
+    i === maxIdx ? "#f97316" : "#22c55e");
   charts.monthlyChart.update();
 
   charts.statusChart.data.datasets[0].data = [statusCounts.pending, statusCounts.bought];

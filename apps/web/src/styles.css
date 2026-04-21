@@ -1168,6 +1168,18 @@ tr.row-summary td {
 }
 .btn-add-item:active { transform: scale(.97); box-shadow: none; }
 
+/* Garante solid verde no tema claro (especificidade maior que [data-theme="light"] .btn) */
+[data-theme="light"] .btn-add-item {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: #fff;
+}
+[data-theme="light"] .btn-add-item:hover {
+  background: #16a34a;
+  border-color: #16a34a;
+  color: #fff;
+}
+
 /* Segmented control */
 .seg-control {
   display: inline-flex;

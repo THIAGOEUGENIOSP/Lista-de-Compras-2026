@@ -1,0 +1,120 @@
+export function brl(v) {
+  const n = Number(v || 0);
+  return n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+}
+
+export function num(v) {
+  const n = Number(String(v).replace(",", "."));
+  return Number.isFinite(n) ? n : 0;
+}
+
+function normalizeCategoria(value) {
+  return String(value || "")
+    .trim()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
+}
+
+export function isPesoCategoria(categoria) {
+  const cat = normalizeCategoria(categoria);
+  return (
+    cat === "churrasco" ||
+    cat === "itens por peso (carnes, queijos e etc.)" ||
+    cat === "itens por peso (carnaes, queijos e etc.)"
+  );
+}
+
+export function formatQuantidade(kgValue, categoria) {
+  const n = Number(kgValue || 0);
+  const isPeso = isPesoCategoria(categoria);
+
+  if (!Number.isFinite(n) || n <= 0) {
+    return isPeso ? "0g" : "0";
+  }
+
+  if (!isPeso) {
+    return n.toLocaleString("pt-BR", {
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 3,
+    });
+  }
+
+  if (n < 1) {
+    const grams = n * 1000;
+    const formatted = grams.toLocaleString("pt-BR", {
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 3,
+    });
+    return `${formatted}g`;
+  }
+
+  const formatted = n.toLocaleString("pt-BR", {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 3,
+  });
+  return `${formatted}kg`;
+}
+
+export function capitalize(s) {
+  if (!s) return "";
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
+/**
+ * Normaliza um nome de item removendo acentos, convertendo para minúsculas
+ * e removendo plurais comuns para comparação
+ */
+export function normalizeItemName(name) {
+  if (!name) return "";
+
+  // Remove acentos e parênteses com conteúdo
+  let normalized = name
+    .toLowerCase()
+    .trim()
+    .replace(/\s*\([^)]*\)/g, "") // Remove tudo entre parênteses
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .trim();
+
+  // Remove plurais comuns em português (ordem importa: padrões maiores primeiro)
+  normalized = normalized
+    .replace(/ões$/, "ao") // ões -> ão (mas depois remove o til)
+    .replace(/aes$/, "ao") // ães -> ão
+    .replace(/ais$/, "al") // ais -> al
+    .replace(/eis$/, "el") // éis -> el
+    .replace(/ois$/, "ol") // ois -> ol
+    .replace(/is$/, "il") // is -> il
+    .replace(/s$/, ""); // Remove 's' final por último
+
+  return normalized;
+}
+
+/**
+ * Verifica se existe um item duplicado na lista
+ * Retorna o item duplicado ou null se não houver duplicação
+ */
+export function findDuplicateItem(newItemName, existingItems) {
+  const normalizedNew = normalizeItemName(newItemName);
+  console.log(
+    "Buscando duplicatas para:",
+    newItemName,
+    "normalizado:",
+    normalizedNew,
+  );
+  console.log("Itens na lista:", existingItems);
+
+  for (const item of existingItems) {
+    const normalizedExisting = normalizeItemName(item.nome);
+    console.log(
+      `Comparando '${normalizedExisting}' com '${normalizedNew}'`,
+      normalizedNew === normalizedExisting,
+    );
+    if (normalizedNew === normalizedExisting) {
+      console.log("DUPLICATA ENCONTRADA:", item.nome);
+      return item;
+    }
+  }
+
+  console.log("Nenhuma duplicata encontrada");
+  return null;
+}

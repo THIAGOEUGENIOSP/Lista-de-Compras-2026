@@ -716,7 +716,7 @@ table tbody tr:hover {
 }
 .chart-box.chart-box-split .chart-half {
   position: relative;
-  height: 260px;
+  height: 280px;
 }
 .chart-box.chart-box-split .chart-half canvas {
   width: 100% !important;

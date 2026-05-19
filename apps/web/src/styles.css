@@ -708,6 +708,31 @@ table tbody tr:hover {
 }
 .chart-box canvas { width: 100% !important; height: 100% !important; }
 
+.chart-box.chart-box-split {
+  height: auto;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+.chart-box.chart-box-split .chart-half {
+  position: relative;
+  height: 260px;
+}
+.chart-box.chart-box-split .chart-half canvas {
+  width: 100% !important;
+  height: 100% !important;
+}
+
+.charts-grid .chart-card.chart-card-wide {
+  grid-column: 1 / -1;
+}
+
+@media (max-width: 960px) {
+  .chart-box.chart-box-split {
+    grid-template-columns: 1fr;
+  }
+}
+
 /* ===== Table input in cell ===== */
 table .input { background: rgba(255,255,255,.04); }
 [data-theme="light"] table .input { background: rgba(15,23,42,.04); }

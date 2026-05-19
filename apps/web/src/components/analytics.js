@@ -341,7 +341,7 @@ export function buildCharts() {
     options: {
       responsive: true,
       maintainAspectRatio: false,
-      layout: { padding: { top: 16, bottom: 10 } },
+      layout: { padding: { top: 32, bottom: 10 } },
       plugins: {
         legend: { display: false },
         tooltip: {
@@ -383,7 +383,7 @@ export function buildCharts() {
     options: {
       responsive: true,
       maintainAspectRatio: false,
-      layout: { padding: { top: 16, bottom: 10 } },
+      layout: { padding: { top: 32, bottom: 10 } },
       plugins: {
         legend: { display: false },
         tooltip: {

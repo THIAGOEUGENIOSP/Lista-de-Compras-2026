@@ -739,7 +739,7 @@ async function computeMonthlySeries() {
   for (const it of items) {
     if (it.status !== "COMPRADO") continue;
     spendMap.set(it.periodo_id, (spendMap.get(it.periodo_id) || 0) + totalOfItem(it));
-    countMap.set(it.periodo_id, (countMap.get(it.periodo_id) || 0) + Number(it.quantidade || 0));
+    countMap.set(it.periodo_id, (countMap.get(it.periodo_id) || 0) + 1);
   }
 
   return {

@@ -727,21 +727,25 @@ async function computeMonthlySeries() {
 
   const res = await sb
     .from("items")
-    .select("periodo_id,quantidade,valor_unitario")
+    .select("periodo_id,quantidade,valor_unitario,status")
     .in("periodo_id", ids);
 
   if (res.error) throw res.error;
 
   const items = (res.data || []).map(normalizeItem);
-  const map = new Map(ids.map((id) => [id, 0]));
+  const spendMap = new Map(ids.map((id) => [id, 0]));
+  const countMap = new Map(ids.map((id) => [id, 0]));
 
   for (const it of items) {
-    map.set(it.periodo_id, (map.get(it.periodo_id) || 0) + totalOfItem(it));
+    if (it.status !== "COMPRADO") continue;
+    spendMap.set(it.periodo_id, (spendMap.get(it.periodo_id) || 0) + totalOfItem(it));
+    countMap.set(it.periodo_id, (countMap.get(it.periodo_id) || 0) + Number(it.quantidade || 0));
   }
 
   return {
     labels: last.map((p) => p.nome),
-    values: last.map((p) => Number((map.get(p.id) || 0).toFixed(2))),
+    values: last.map((p) => Number((spendMap.get(p.id) || 0).toFixed(2))),
+    counts: last.map((p) => countMap.get(p.id) || 0),
   };
 }
 
@@ -879,7 +883,8 @@ function renderApp() {
   } else {
     try {
       state.charts.priceChart.destroy();
-      state.charts.monthlyChart.destroy();
+      state.charts.monthlyChartSpent.destroy();
+      state.charts.monthlyChartCount.destroy();
       state.charts.statusChart.destroy();
     } catch {}
     state.charts = buildCharts();

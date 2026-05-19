@@ -87,14 +87,17 @@ export function renderAnalytics(insights) {
         <div class="chart-box"><canvas id="chartPrice"></canvas></div>
       </div>
       <div class="chart-card">
-        <div class="chart-card-label">📈 Evolução mensal</div>
-        <div class="chart-card-sub">Total gasto (R$) por período</div>
-        <div class="chart-box"><canvas id="chartMonthly"></canvas></div>
-      </div>
-      <div class="chart-card">
         <div class="chart-card-label">🍩 Pendentes vs Comprados</div>
         <div class="chart-card-sub">Proporção por quantidade</div>
         <div class="chart-box"><canvas id="chartStatus"></canvas></div>
+      </div>
+      <div class="chart-card chart-card-wide">
+        <div class="chart-card-label">📈 Evolução mensal</div>
+        <div class="chart-card-sub">Total gasto e quantidade de itens por período</div>
+        <div class="chart-box chart-box-split">
+          <div class="chart-half"><canvas id="chartMonthlySpent"></canvas></div>
+          <div class="chart-half"><canvas id="chartMonthlyCount"></canvas></div>
+        </div>
       </div>
     </div>
 
@@ -222,10 +225,11 @@ function tooltipDefaults(t) {
 }
 
 export function buildCharts() {
-  const ctxPrice   = document.getElementById("chartPrice");
-  const ctxMonthly = document.getElementById("chartMonthly");
-  const ctxStatus  = document.getElementById("chartStatus");
-  if (!ctxPrice || !ctxMonthly || !ctxStatus) return null;
+  const ctxPrice       = document.getElementById("chartPrice");
+  const ctxMonthlySpent = document.getElementById("chartMonthlySpent");
+  const ctxMonthlyCount = document.getElementById("chartMonthlyCount");
+  const ctxStatus      = document.getElementById("chartStatus");
+  if (!ctxPrice || !ctxMonthlySpent || !ctxMonthlyCount || !ctxStatus) return null;
 
   const t = getChartTheme();
 
@@ -288,19 +292,38 @@ export function buildCharts() {
       const meta = chart.getDatasetMeta(0);
       meta.data.forEach((bar, i) => {
         const value = data.datasets[0].data[i];
-        if (!value) return;
+        if (value == null) return;
         ctx.save();
         ctx.font = "600 10px 'Inter', system-ui, sans-serif";
         ctx.fillStyle = t.text;
         ctx.textAlign = "center";
         ctx.textBaseline = "bottom";
-        ctx.fillText(brlCompact(value), bar.x, bar.y - 4);
+        ctx.fillText(brlCompact(value), bar.x, bar.y - 8);
         ctx.restore();
       });
     },
   };
 
-  const monthlyChart = new Chart(ctxMonthly, {
+  const monthlyCountLabelPlugin = {
+    id: "monthlyCountLabels",
+    afterDatasetsDraw(chart) {
+      const { ctx, data } = chart;
+      const meta = chart.getDatasetMeta(0);
+      meta.data.forEach((bar, i) => {
+        const value = data.datasets[0].data[i];
+        if (value == null) return;
+        ctx.save();
+        ctx.font = "600 10px 'Inter', system-ui, sans-serif";
+        ctx.fillStyle = "rgba(37,99,235,0.92)";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "bottom";
+        ctx.fillText(`${value} itens`, bar.x, bar.y - 8);
+        ctx.restore();
+      });
+    },
+  };
+
+  const monthlyChartSpent = new Chart(ctxMonthlySpent, {
     type: "bar",
     plugins: [monthlyBarLabelPlugin],
     data: {
@@ -311,36 +334,73 @@ export function buildCharts() {
         backgroundColor: [],
         borderColor: [],
         borderWidth: 0,
-        borderRadius: 8,
+        borderRadius: 12,
         borderSkipped: false,
       }],
     },
     options: {
       responsive: true,
       maintainAspectRatio: false,
-      layout: { padding: { top: 24 } },
+      layout: { padding: { top: 16, bottom: 10 } },
       plugins: {
         legend: { display: false },
         tooltip: {
           ...tooltipDefaults(t),
-          callbacks: {
-            label: (ctx) => ` ${brl(ctx.parsed.y)}`,
-          },
+          callbacks: { label: (ctx) => ` ${brl(ctx.parsed.y)}` },
         },
       },
       scales: {
         y: {
           beginAtZero: true,
-          grid:   { color: t.grid },
-          ticks:  {
-            color: t.text,
-            callback: brlCompact,
-          },
+          grid: { color: t.grid },
+          ticks: { color: t.text, callback: brlCompact },
           border: { display: false },
         },
         x: {
-          grid:   { display: false },
-          ticks:  { color: t.text },
+          grid: { display: false },
+          ticks: { color: t.text, maxRotation: 0, minRotation: 0 },
+          border: { display: false },
+        },
+      },
+    },
+  });
+
+  const monthlyChartCount = new Chart(ctxMonthlyCount, {
+    type: "bar",
+    plugins: [monthlyCountLabelPlugin],
+    data: {
+      labels: [],
+      datasets: [{
+        label: "Itens comprados",
+        data: [],
+        backgroundColor: [],
+        borderColor: [],
+        borderWidth: 0,
+        borderRadius: 12,
+        borderSkipped: false,
+      }],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      layout: { padding: { top: 16, bottom: 10 } },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          ...tooltipDefaults(t),
+          callbacks: { label: (ctx) => ` ${ctx.parsed.y} itens` },
+        },
+      },
+      scales: {
+        y: {
+          beginAtZero: true,
+          grid: { color: t.grid },
+          ticks: { color: t.text, precision: 0 },
+          border: { display: false },
+        },
+        x: {
+          grid: { display: false },
+          ticks: { color: t.text, maxRotation: 0, minRotation: 0 },
           border: { display: false },
         },
       },
@@ -380,7 +440,7 @@ export function buildCharts() {
     },
   });
 
-  return { priceChart, monthlyChart, statusChart };
+  return { priceChart, monthlyChartSpent, monthlyChartCount, statusChart };
 }
 
 export function updateCharts({ charts, priceBuckets, monthlySeries, statusCounts }) {
@@ -395,13 +455,22 @@ export function updateCharts({ charts, priceBuckets, monthlySeries, statusCounts
 
   const values  = monthlySeries.values;
   const maxIdx  = values.length ? values.indexOf(Math.max(...values)) : -1;
-  charts.monthlyChart.data.labels           = monthlySeries.labels;
-  charts.monthlyChart.data.datasets[0].data = values;
-  charts.monthlyChart.data.datasets[0].backgroundColor = values.map((_, i) =>
+  charts.monthlyChartSpent.data.labels           = monthlySeries.labels;
+  charts.monthlyChartSpent.data.datasets[0].data = values;
+  charts.monthlyChartSpent.data.datasets[0].backgroundColor = values.map((_, i) =>
     i === maxIdx ? "rgba(249,115,22,.80)" : "rgba(34,197,94,.65)");
-  charts.monthlyChart.data.datasets[0].borderColor = values.map((_, i) =>
+  charts.monthlyChartSpent.data.datasets[0].borderColor = values.map((_, i) =>
     i === maxIdx ? "#f97316" : "#22c55e");
-  charts.monthlyChart.update();
+  charts.monthlyChartSpent.update();
+
+  const counts = monthlySeries.counts || [];
+  charts.monthlyChartCount.data.labels = monthlySeries.labels;
+  charts.monthlyChartCount.data.datasets[0].data = counts;
+  charts.monthlyChartCount.data.datasets[0].backgroundColor = counts.map(() =>
+    "rgba(37,99,235,0.70)");
+  charts.monthlyChartCount.data.datasets[0].borderColor = counts.map(() =>
+    "#2563eb");
+  charts.monthlyChartCount.update();
 
   charts.statusChart.data.datasets[0].data = [statusCounts.pending, statusCounts.bought];
   charts.statusChart.update();

@@ -76,9 +76,6 @@ export function renderHeader({
     </details>
   </div>
 
-  <!-- FAB: botão flutuante (só mobile) -->
-  <button class="fab-add" data-action="open-add" title="Adicionar item">+</button>
-  
   <!-- Botão voltar ao topo -->
   <button class="back-to-top" id="backToTop" data-action="scroll-top" type="button" onclick="(document.scrollingElement || document.documentElement || document.body).scrollTo({ top: 0, left: 0, behavior: 'smooth' }); window.scrollTo({ top: 0, left: 0, behavior: 'smooth' });" title="Voltar ao topo" aria-label="Voltar ao topo">
     ↑

@@ -269,12 +269,16 @@ function computeBudgetRows(items) {
   });
 }
 
-function buildRecurringItemSuggestions(limit = 8) {
+function buildRecurringItemSuggestions(limit = 8, query = "") {
+  const normalizedQuery = normalizeText(query).trim();
   const map = new Map();
   for (const it of state.items || []) {
     const rawName = String(it?.nome || "").trim();
     const key = normalizeNameKey(rawName);
     if (!key || !rawName) continue;
+    if (normalizedQuery && !normalizeText(rawName).includes(normalizedQuery)) {
+      continue;
+    }
 
     const prev = map.get(key) || {
       key,
@@ -451,6 +455,28 @@ function escapeHtml(value) {
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&#39;");
+}
+
+function refreshLucideIcons() {
+  if (!window.lucide?.createIcons) return;
+  window.lucide.createIcons({
+    attrs: {
+      "stroke-width": 2,
+    },
+  });
+}
+
+function recurringSuggestionIconName(name) {
+  const normalized = normalizeText(name);
+  if (/candida|agua sanitaria|cloro/.test(normalized)) return "bottle";
+  if (/desodorante|perfume|spray/.test(normalized)) return "spray-can";
+  if (/detergente|amaciante|sabao|limpeza/.test(normalized)) return "droplet";
+  if (/papel|higienico|guardanapo/.test(normalized)) return "toilet";
+  if (/pasta|close|escova|dente/.test(normalized)) return "pill";
+  if (/margarina|manteiga|pote/.test(normalized)) return "archive";
+  if (/bolacha|biscoito|maizena/.test(normalized)) return "circle-dot";
+  if (/cif|multiuso|brilho/.test(normalized)) return "sparkles";
+  return "shopping-bag";
 }
 
 function computeEconomyInsights(items) {
@@ -900,6 +926,8 @@ function renderApp() {
 
       ${renderItemFormModal()}
     </div>
+
+    <button class="fab-add" data-action="open-add" type="button" title="Adicionar item" aria-label="Adicionar item">+</button>
   `;
 
   // Troca "Sair" por "Trocar nome"
@@ -943,6 +971,7 @@ function renderApp() {
 
   // Setup botão voltar ao topo
   setupBackToTop();
+  refreshLucideIcons(root);
 }
 
 function scrollToTop() {
@@ -1225,19 +1254,29 @@ function bindPerRenderInputs() {
       }
     };
 
+    const hideRecurringSuggestions = () => {
+      if (!itemSuggestionsWrap || !itemSuggestionsList) return;
+      itemSuggestionsWrap.style.display = "none";
+      itemSuggestionsList.innerHTML = "";
+    };
+
     const renderRecurringSuggestions = () => {
       if (!itemSuggestionsWrap || !itemSuggestionsList) return;
       const isEditing = Boolean(currentId());
       if (isEditing) {
-        itemSuggestionsWrap.style.display = "none";
-        itemSuggestionsList.innerHTML = "";
+        hideRecurringSuggestions();
         return;
       }
 
-      const suggestions = buildRecurringItemSuggestions(8);
+      const query = String(nameInput?.value || "").trim();
+      if (!query) {
+        hideRecurringSuggestions();
+        return;
+      }
+
+      const suggestions = buildRecurringItemSuggestions(8, query);
       if (!suggestions.length) {
-        itemSuggestionsWrap.style.display = "none";
-        itemSuggestionsList.innerHTML = "";
+        hideRecurringSuggestions();
         return;
       }
 
@@ -1245,9 +1284,13 @@ function bindPerRenderInputs() {
       itemSuggestionsList.innerHTML = suggestions
         .map(
           (name) =>
-            `<button type="button" class="item-suggest-btn" data-suggest-item="${escapeHtml(name)}">${escapeHtml(name)}</button>`,
+            `<button type="button" class="item-suggest-btn" data-suggest-item="${escapeHtml(name)}">
+              <i class="suggest-icon" data-lucide="${recurringSuggestionIconName(name)}" aria-hidden="true"></i>
+              <span>${escapeHtml(name)}</span>
+            </button>`,
         )
         .join("");
+      refreshLucideIcons(itemSuggestionsList);
 
       itemSuggestionsList.querySelectorAll("[data-suggest-item]").forEach((btn) => {
         btn.addEventListener("click", () => {
@@ -1256,6 +1299,7 @@ function bindPerRenderInputs() {
           nameInput.value = suggestedName;
           form.dataset.categoryManual = "false";
           refreshCategorySuggestion();
+          hideRecurringSuggestions();
           nameInput.focus();
           nameInput.setSelectionRange(nameInput.value.length, nameInput.value.length);
         });
@@ -1273,14 +1317,43 @@ function bindPerRenderInputs() {
       syncTipo();
     }
     if (nameInput) {
-      nameInput.addEventListener("input", () => refreshCategorySuggestion());
+      nameInput.addEventListener("input", () => {
+        refreshCategorySuggestion();
+        renderRecurringSuggestions();
+      });
+      nameInput.addEventListener("blur", () => {
+        window.setTimeout(hideRecurringSuggestions, 120);
+      });
+      nameInput.addEventListener("focus", renderRecurringSuggestions);
     }
     form.addEventListener("shopping:modal-opened", () => {
       refreshCategorySuggestion({ applyAuto: false });
-      renderRecurringSuggestions();
+      hideRecurringSuggestions();
+      refreshLucideIcons(form);
     });
 
     bindCurrencyInputs(form);
+
+    const qtyDecreaseBtn = form.querySelector("[data-qty-decrease]");
+    const qtyIncreaseBtn = form.querySelector("[data-qty-increase]");
+    if (qtyDecreaseBtn) {
+      qtyDecreaseBtn.addEventListener("click", (e) => {
+        e.preventDefault();
+        if (!qtdInput) return;
+        const current = parseFloat(qtdInput.value) || 0;
+        if (current > 1) {
+          qtdInput.value = (current - 1).toString();
+        }
+      });
+    }
+    if (qtyIncreaseBtn) {
+      qtyIncreaseBtn.addEventListener("click", (e) => {
+        e.preventDefault();
+        if (!qtdInput) return;
+        const current = parseFloat(qtdInput.value) || 0;
+        qtdInput.value = (current + 1).toString();
+      });
+    }
 
     form.addEventListener("submit", async (e) => {
       e.preventDefault();
@@ -1694,8 +1767,8 @@ function bindDelegatedEvents() {
       if (action === "open-add") {
         openModal({
           title: "Adicionar item",
-          subtitle: `Período: ${state.currentPeriod.nome}`,
-          hint: `Colaborador: ${state.collaboratorName}`,
+          periodo: state.currentPeriod.nome,
+          colaborador: state.collaboratorName,
           data: null,
         });
         const form = qs("#itemForm");
@@ -1715,8 +1788,8 @@ function bindDelegatedEvents() {
 
         openModal({
           title: "Editar item",
-          subtitle: `Período: ${state.currentPeriod.nome}`,
-          hint: `Criado por: ${getCollaboratorName(it)}`,
+          periodo: state.currentPeriod.nome,
+          colaborador: getCollaboratorName(it),
           data: it,
         });
         const form = qs("#itemForm");

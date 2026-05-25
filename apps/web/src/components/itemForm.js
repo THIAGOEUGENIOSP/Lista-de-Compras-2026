@@ -4,6 +4,32 @@ import {
   normalizeShoppingCategory,
 } from "../utils/shoppingCategories.js";
 
+function icon(name) {
+  const names = {
+    add: "badge-plus",
+    box: "package",
+    hash: "hash",
+    tag: "tag",
+    clock: "clock",
+    user: "user-round",
+    close: "x",
+    check: "check",
+    chevronDown: "chevron-down",
+    chevronUp: "chevron-up",
+  };
+
+  return `<i class="form-icon" data-lucide="${names[name] || names.box}" aria-hidden="true"></i>`;
+}
+
+function escapeHtml(value) {
+  return String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
 function buildCategoryOptions() {
   return getShoppingCategories()
     .map((category) => {
@@ -19,81 +45,126 @@ function buildCategoryOptions() {
 export function renderItemFormModal() {
   return `
   <div class="modal-backdrop" id="modalBackdrop">
-    <div class="card modal">
-      <div class="row space-between">
-        <div>
-          <h2 id="modalTitle">Adicionar item</h2>
-          <div class="muted" style="font-size:12px;margin-top:4px" id="modalSubtitle">Informe os dados do item</div>
+    <div class="card modal item-modal">
+      <div class="item-modal-head">
+        <div class="item-title-wrap">
+          <span class="item-title-icon">${icon("add")}</span>
+          <div>
+            <h2 id="modalTitle" class="item-modal-title">Adicionar item</h2>
+            <div class="item-modal-subtitle" id="modalSubtitle">Período: ---</div>
+          </div>
         </div>
-        <button class="btn small" data-action="close-modal">✕</button>
+        <button class="btn small item-modal-close" data-action="close-modal" aria-label="Fechar">
+          ${icon("close")}
+        </button>
       </div>
 
       <div class="hr"></div>
 
-      <form id="itemForm" class="grid">
-        <div class="full">
-          <label class="muted" style="font-size:12px">Item</label>
-          <input class="input" name="nome" placeholder="Ex: Cerveja, Carne, Refrigerante..." required />
+      <form id="itemForm" class="grid item-form-grid">
+        <div class="full form-line">
+          <label class="form-label">Item <span class="required">*</span></label>
+          <div class="field-control">
+            <span class="field-prefix">${icon("box")}</span>
+            <input class="input with-icon" name="nome" placeholder="Ex: Cerveja, Carne, Refrigerante..." required />
+          </div>
           <div id="itemSuggestionsWrap" class="item-suggestions" style="display:none">
-            <div class="muted" style="font-size:12px;margin-top:6px">Sugestões recorrentes</div>
+            <div class="suggestions-title">Sugestões</div>
             <div id="itemSuggestions" class="item-suggestions-list"></div>
           </div>
         </div>
 
-        <div>
-          <label class="muted" style="font-size:12px">Quantidade</label>
-          <input
-            class="input"
-            name="quantidade"
-            type="text"
-            inputmode="decimal"
-            placeholder="Ex: 2 ou 1kg, 500g"
-            required
-          />
+        <div class="form-field compact-field">
+          <label class="form-label">Quantidade <span class="required">*</span></label>
+          <div class="field-control qty-control">
+            <span class="field-prefix">${icon("hash")}</span>
+            <input
+              class="input with-icon"
+              name="quantidade"
+              type="text"
+              inputmode="decimal"
+              placeholder="Ex: 2 ou 2,5"
+              required
+            />
+            <div class="qty-stepper">
+              <button type="button" class="qty-step-btn" data-qty-increase aria-label="Aumentar quantidade">${icon("chevronUp")}</button>
+              <button type="button" class="qty-step-btn" data-qty-decrease aria-label="Diminuir quantidade">${icon("chevronDown")}</button>
+            </div>
+          </div>
+        </div>
+        <div class="form-spacer" aria-hidden="true"></div>
+
+        <div class="form-field">
+          <label class="form-label">Tipo</label>
+          <div class="field-control select-control">
+            <span class="field-prefix">${icon("box")}</span>
+            <select name="tipo">
+              <option value="UNIDADE">Unidade</option>
+              <option value="PESO">Peso (kg/g)</option>
+            </select>
+          </div>
         </div>
 
-        <div>
-          <label class="muted" style="font-size:12px">Tipo</label>
-          <select name="tipo">
-            <option value="UNIDADE">Unidade</option>
-            <option value="PESO">Peso (kg/g)</option>
-          </select>
+        <div class="form-field">
+          <label class="form-label">Categoria</label>
+          <div class="field-control select-control">
+            <span class="field-prefix">${icon("tag")}</span>
+            <select name="categoria">
+              ${buildCategoryOptions()}
+            </select>
+          </div>
+          <div class="field-hint" id="categoriaAutoHint"></div>
         </div>
 
-        <div>
-          <label class="muted" style="font-size:12px">Categoria</label>
-          <select name="categoria">
-            ${buildCategoryOptions()}
-          </select>
-          <div class="muted" style="font-size:12px;margin-top:4px" id="categoriaAutoHint"></div>
+        <div class="form-field">
+          <label class="form-label">Valor unitário (R$) <span class="required">*</span></label>
+          <div class="field-control">
+            <span class="field-prefix text-prefix">R$</span>
+            <input
+              class="input with-icon"
+              name="valor_unitario"
+              type="text"
+              inputmode="decimal"
+              data-currency="brl"
+              value="R$ 0,00"
+              required
+            />
+          </div>
         </div>
 
-        <div>
-          <label class="muted" style="font-size:12px">Valor unitário (R$)</label>
-          <input
-            class="input"
-            name="valor_unitario"
-            type="text"
-            inputmode="decimal"
-            data-currency="brl"
-            value="R$ 0,00"
-            required
-          />
+        <div class="form-field">
+          <label class="form-label">Status</label>
+          <div class="field-control select-control">
+            <span class="field-prefix">${icon("clock")}</span>
+            <select name="status">
+              <option value="PENDENTE" selected>Pendente</option>
+              <option value="COMPRADO">Comprado</option>
+            </select>
+          </div>
         </div>
 
-        <div class="full">
-          <label class="muted" style="font-size:12px">Status</label>
-          <select name="status">
-            <option value="PENDENTE" selected>Pendente</option>
-            <option value="COMPRADO">Comprado</option>
-          </select>
+        <div class="form-field">
+          <div class="collaborator-card">
+            ${icon("user")}
+            <span id="modalCollaborator">Colaborador: ---</span>
+          </div>
         </div>
+        <div class="form-spacer" aria-hidden="true"></div>
 
-        <div class="full row space-between" style="margin-top:8px">
-          <div class="muted" style="font-size:12px" id="modalHint"></div>
-          <div class="row">
-            <button type="button" class="btn" data-action="close-modal">Cancelar</button>
-            <button type="submit" class="btn primary" id="submitBtn">Salvar</button>
+        <div class="full item-form-footer">
+          <div class="form-note">
+            <span class="note-icon">i</span>
+            Campos marcados com <span class="required">*</span> são obrigatórios
+          </div>
+          <div class="form-actions">
+            <button type="button" class="btn item-cancel-btn" data-action="close-modal">
+              ${icon("close")}
+              Cancelar
+            </button>
+            <button type="submit" class="btn primary item-save-btn" id="submitBtn">
+              ${icon("check")}
+              Salvar
+            </button>
           </div>
         </div>
 
@@ -115,13 +186,18 @@ function ensureOption(selectEl, value) {
   selectEl.appendChild(opt);
 }
 
-export function openModal({ title, subtitle, hint, data }) {
+export function openModal({ title, subtitle, hint, data, periodo, colaborador }) {
   const backdrop = document.getElementById("modalBackdrop");
   backdrop.style.display = "flex";
   document.getElementById("modalTitle").textContent = title || "Adicionar item";
-  document.getElementById("modalSubtitle").textContent =
-    subtitle || "Informe os dados do item";
-  document.getElementById("modalHint").textContent = hint || "";
+
+  document.getElementById("modalSubtitle").innerHTML = periodo
+    ? `Período: <span>${escapeHtml(periodo)}</span>`
+    : "Período: ---";
+
+  document.getElementById("modalCollaborator").innerHTML = colaborador
+    ? `Colaborador: <strong>${escapeHtml(colaborador)}</strong>`
+    : "Colaborador: ---";
 
   const form = document.getElementById("itemForm");
   form.reset();

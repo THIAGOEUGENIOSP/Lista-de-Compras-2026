@@ -533,24 +533,372 @@ table tbody tr:hover {
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
   display: none; align-items: center; justify-content: center;
-  padding: 16px;
+  padding: 10px;
   z-index: 100;
 }
 .modal {
   width: min(720px, 100%);
-  padding: 20px;
+  padding: 24px;
   animation: modalSlideIn .2s cubic-bezier(.4,0,.2,1);
 }
 @keyframes modalSlideIn {
   from { opacity: 0; transform: translateY(12px) scale(.97); }
   to   { opacity: 1; transform: translateY(0) scale(1); }
 }
-.modal .grid { grid-template-columns: repeat(2, minmax(0,1fr)); }
+.modal .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .modal .grid .full { grid-column: 1 / -1; }
+.modal label { display: flex; align-items: center; gap: 4px; }
+.modal .input, .modal select { width: 100%; }
 
-@media (max-width: 720px) {
-  .modal .grid {
+.item-modal {
+  --form-blue: #2563eb;
+  --form-blue-soft: rgba(37,99,235,.10);
+  --form-border: rgba(148,163,184,.24);
+  width: min(940px, calc(100vw - 20px));
+  max-height: calc(100dvh - 20px);
+  padding: clamp(18px, 2.4dvh, 26px) clamp(22px, 3vw, 28px) 0;
+  border-radius: 14px;
+  overflow-y: auto;
+  scrollbar-gutter: stable;
+}
+.item-modal .hr {
+  margin: clamp(14px, 2dvh, 24px) 0 clamp(14px, 1.8dvh, 20px);
+  background: var(--form-border);
+}
+.item-modal-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+}
+.item-title-wrap {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+}
+.item-title-icon {
+  width: 26px;
+  height: 26px;
+  border-radius: 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--form-blue-soft);
+  color: var(--form-blue);
+  flex: 0 0 auto;
+}
+.item-modal-title {
+  margin: 0;
+  font-size: 22px;
+  line-height: 1.15;
+  color: var(--text);
+}
+.item-modal-subtitle {
+  margin-top: 6px;
+  font-size: 13px;
+  color: var(--muted);
+}
+.item-modal-subtitle::first-letter { color: inherit; }
+.item-modal-subtitle {
+  text-wrap: pretty;
+}
+.item-modal-subtitle {
+  color: color-mix(in srgb, var(--muted) 78%, var(--form-blue));
+}
+.item-modal-subtitle span {
+  color: var(--form-blue);
+  font-weight: 700;
+}
+.item-modal-close {
+  width: 38px;
+  height: 38px;
+  padding: 0;
+  justify-content: center;
+  border-radius: 10px;
+}
+.form-icon {
+  width: 17px;
+  height: 17px;
+  display: inline-block;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  fill: none;
+  flex: 0 0 auto;
+}
+.item-modal-close .form-icon,
+.item-cancel-btn .form-icon,
+.item-save-btn .form-icon {
+  width: 16px;
+  height: 16px;
+}
+.item-form-grid {
+  gap: clamp(14px, 2.1dvh, 20px) 30px;
+}
+.form-line {
+  display: grid;
+  grid-template-columns: 74px minmax(0, 1fr);
+  align-items: start;
+  column-gap: 22px;
+}
+.form-line .item-suggestions {
+  grid-column: 1 / -1;
+}
+.form-line > .field-control {
+  max-width: 520px;
+}
+.form-label {
+  min-height: 42px;
+  color: var(--text2);
+  font-size: 13px;
+  font-weight: 700;
+}
+.form-field .form-label {
+  min-height: auto;
+  margin-bottom: 8px;
+}
+.compact-field {
+  display: grid;
+  grid-template-columns: 90px minmax(0, 300px);
+  align-items: center;
+  column-gap: 22px;
+}
+.compact-field .form-label {
+  margin-bottom: 0;
+}
+.field-control {
+  position: relative;
+  display: flex;
+  align-items: stretch;
+  min-width: 0;
+}
+.field-prefix {
+  position: absolute;
+  left: 14px;
+  top: 50%;
+  z-index: 1;
+  transform: translateY(-50%);
+  color: var(--form-blue);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+.field-prefix.text-prefix {
+  color: var(--text2);
+  font-size: 14px;
+  font-weight: 700;
+}
+.item-modal .input,
+.item-modal select {
+  min-width: 0;
+  height: 42px;
+  border-color: var(--form-border);
+  border-radius: 8px;
+  background: rgba(255,255,255,.03);
+  color: var(--text);
+  font-size: 14px;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.04);
+}
+.item-modal .input:focus,
+.item-modal select:focus {
+  border-color: rgba(37,99,235,.45);
+  box-shadow: 0 0 0 3px rgba(37,99,235,.12), inset 0 1px 0 rgba(255,255,255,.04);
+}
+.item-modal .input.with-icon,
+.item-modal .select-control select {
+  padding-left: 48px;
+}
+.item-modal select {
+  appearance: none;
+  padding-right: 42px;
+  background-image:
+    linear-gradient(45deg, transparent 50%, var(--muted) 50%),
+    linear-gradient(135deg, var(--muted) 50%, transparent 50%);
+  background-position:
+    calc(100% - 18px) 19px,
+    calc(100% - 13px) 19px;
+  background-size: 5px 5px, 5px 5px;
+  background-repeat: no-repeat;
+}
+.qty-control .input {
+  padding-right: 48px;
+}
+.qty-stepper {
+  position: absolute;
+  right: 1px;
+  top: 1px;
+  bottom: 1px;
+  width: 40px;
+  border-left: 1px solid var(--form-border);
+  display: grid;
+  grid-template-rows: 1fr 1fr;
+  overflow: hidden;
+  border-radius: 0 8px 8px 0;
+}
+.qty-step-btn {
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+.qty-step-btn:first-child {
+  border-bottom: 1px solid var(--form-border);
+}
+.qty-step-btn:hover {
+  color: var(--form-blue);
+  background: var(--form-blue-soft);
+}
+.qty-step-btn .form-icon {
+  width: 14px;
+  height: 14px;
+}
+.suggestions-title {
+  margin-top: clamp(12px, 1.8dvh, 18px);
+  color: var(--text2);
+  font-size: 13px;
+  font-weight: 600;
+}
+.item-modal .item-suggestions-list {
+  margin-top: 9px;
+  gap: 8px 10px;
+}
+.item-modal .item-suggest-btn {
+  border-color: var(--form-border);
+  border-radius: 8px;
+  background: rgba(255,255,255,.025);
+  color: var(--text2);
+  min-height: 34px;
+  padding: 7px 13px;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.suggest-icon {
+  width: 16px;
+  height: 16px;
+  color: var(--form-blue);
+  flex: 0 0 auto;
+}
+.item-modal .item-suggest-btn:hover {
+  color: var(--form-blue);
+  border-color: rgba(37,99,235,.35);
+  background: var(--form-blue-soft);
+}
+.collaborator-card {
+  min-height: 42px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0 18px;
+  border-radius: 8px;
+  background: linear-gradient(90deg, rgba(37,99,235,.09), rgba(37,99,235,.025));
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 600;
+}
+.collaborator-card .form-icon {
+  color: var(--form-blue);
+}
+.collaborator-card #modalCollaborator {
+  color: var(--text2);
+}
+.collaborator-card strong {
+  color: var(--form-blue);
+  font-size: 12px;
+}
+.item-form-footer {
+  margin: clamp(2px, 1dvh, 8px) calc(clamp(22px, 3vw, 28px) * -1) 0;
+  padding: clamp(12px, 1.8dvh, 16px) clamp(22px, 3vw, 28px);
+  border-top: 1px solid var(--form-border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+}
+.form-note {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 600;
+}
+.note-icon {
+  width: 15px;
+  height: 15px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1.5px solid currentColor;
+  border-radius: 50%;
+  font-size: 10px;
+  font-weight: 800;
+  line-height: 1;
+}
+.form-actions {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.item-cancel-btn,
+.item-save-btn {
+  min-width: 112px;
+  height: 38px;
+  justify-content: center;
+  border-radius: 8px;
+}
+.item-modal .item-save-btn {
+  background: var(--form-blue);
+  border-color: var(--form-blue);
+  color: #fff;
+  box-shadow: 0 10px 20px rgba(37,99,235,.22);
+}
+.item-modal .item-save-btn:hover {
+  background: #1d4ed8;
+  border-color: #1d4ed8;
+  box-shadow: 0 12px 24px rgba(37,99,235,.28);
+}
+[data-theme="light"] .item-modal {
+  --form-border: rgba(15,23,42,.13);
+}
+[data-theme="light"] .item-modal .input,
+[data-theme="light"] .item-modal select {
+  background: #fff;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.95);
+}
+[data-theme="light"] .item-modal .item-suggest-btn {
+  background: #fff;
+}
+
+@media (max-width: 780px) {
+  .modal .grid { grid-template-columns: 1fr; }
+  .form-spacer { display: none; }
+  .item-modal {
+    width: min(640px, calc(100vw - 16px));
+  }
+  .form-line {
     grid-template-columns: 1fr;
+    row-gap: 8px;
+  }
+  .compact-field {
+    grid-template-columns: 1fr;
+    row-gap: 8px;
+  }
+  .compact-field .form-label {
+    margin-bottom: 0;
+  }
+  .form-line > .field-control {
+    max-width: none;
+  }
+  .form-label {
+    min-height: auto;
   }
 }
 
@@ -563,6 +911,37 @@ table tbody tr:hover {
     max-height: 92dvh;
     overflow-y: auto;
     animation: modalSlideUp .25s cubic-bezier(.4,0,.2,1);
+  }
+  .item-modal {
+    padding: 20px 18px 0;
+    border-radius: 18px 18px 0 0;
+    width: 100%;
+    max-height: 92dvh;
+  }
+  .item-modal-title {
+    font-size: 19px;
+  }
+  .item-form-grid {
+    gap: 16px;
+  }
+  .item-form-footer {
+    margin: 6px -18px 0;
+    padding: 14px 18px 18px;
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .form-note {
+    align-items: flex-start;
+  }
+  .form-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+  .item-cancel-btn,
+  .item-save-btn {
+    width: 100%;
+    min-width: 0;
   }
   @keyframes modalSlideUp {
     from { opacity: 0; transform: translateY(100%); }
@@ -817,8 +1196,11 @@ table tbody tr:hover {
 
 /* FAB — Floating Action Button (mobile) */
 .fab-add {
-  position: fixed;
-  bottom: 20px; right: 18px;
+  position: fixed !important;
+  top: auto !important;
+  left: auto !important;
+  right: calc(18px + env(safe-area-inset-right));
+  bottom: calc(20px + env(safe-area-inset-bottom));
   width: 56px; height: 56px;
   border-radius: 999px;
   background: var(--primary);
@@ -830,8 +1212,10 @@ table tbody tr:hover {
   border: none;
   cursor: pointer;
   box-shadow: 0 4px 16px var(--primary-glow), 0 8px 32px rgba(34,197,94,.25);
-  z-index: 90;
+  z-index: 150;
   transition: transform var(--trans), box-shadow var(--trans);
+  touch-action: manipulation;
+  will-change: transform;
 }
 .fab-add:hover, .fab-add:focus {
   transform: scale(1.08);

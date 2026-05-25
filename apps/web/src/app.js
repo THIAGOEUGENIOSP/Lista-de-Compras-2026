@@ -1682,9 +1682,14 @@ function bindDelegatedEvents() {
       }
 
       if (action === "next-month") {
+        const nextMonthName = periodName(addMonths(state.cursorDate, +1));
         state.cursorDate = addMonths(state.cursorDate, +1);
         saveCursor();
         await loadDataForPeriod();
+        toast.show({
+          title: "Navegando",
+          message: `Você está visualizando ${nextMonthName}.`,
+        });
         renderApp();
         return;
       }
@@ -1771,8 +1776,8 @@ function bindDelegatedEvents() {
           toast.show({
             title: state.softDeleteEnabled ? "Lixeira" : "Exclusão permanente",
             message: state.softDeleteEnabled
-              ? "Item movido para a lixeira."
-              : "Item removido permanentemente.",
+              ? `${deletedItem?.nome || "Item"} movido para a lixeira.`
+              : `${deletedItem?.nome || "Item"} removido permanentemente.`,
           });
         }
         if (state.auditLogEnabled) {
@@ -2060,8 +2065,8 @@ function bindDelegatedEvents() {
         });
 
         toast.show({
-          title: "Copiado",
-          message: `${qtd} item(ns) copiado(s) para ${nextPeriod.nome}.`,
+          title: "✓ Copiado com sucesso",
+          message: `${qtd} item${qtd !== 1 ? "ns" : ""} copiado${qtd !== 1 ? "s" : ""} para ${nextPeriod.nome}.`,
         });
         return;
       }

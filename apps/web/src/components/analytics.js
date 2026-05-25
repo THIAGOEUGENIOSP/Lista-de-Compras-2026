@@ -83,22 +83,34 @@ export function renderAnalytics(insights) {
     <div class="charts-grid">
       <div class="chart-card">
         <div class="chart-card-label">💰 Distribuição de preços</div>
-        <div class="chart-card-sub">Unitário por faixa de valor</div>
+        <div class="chart-card-sub">Quantidade de itens por faixa de valor unitário</div>
         <div class="chart-box"><canvas id="chartPrice"></canvas></div>
+        <div class="chart-insight">
+          <span class="chart-insight-icon">📊</span>
+          <span class="chart-insight-text">Clique nas barras para ver detalhes</span>
+        </div>
       </div>
       <div class="chart-card">
         <div class="chart-card-label">🍩 Pendentes vs Comprados</div>
-        <div class="chart-card-sub">Proporção por quantidade</div>
+        <div class="chart-card-sub">Proporção de itens pendentes vs comprados</div>
         <div class="chart-box"><canvas id="chartStatus"></canvas></div>
+        <div class="chart-insight">
+          <span class="chart-insight-icon">🎯</span>
+          <span class="chart-insight-text">Meta: 100% dos itens comprados</span>
+        </div>
       </div>
       <div class="chart-card chart-card-wide">
         <div class="chart-card-label">📈 Evolução mensal</div>
-        <div class="chart-card-sub">Total gasto e quantidade de itens por período</div>
+        <div class="chart-card-sub">Histórico de gastos e quantidade de itens</div>
         <div class="chart-box chart-box-split">
           <div class="chart-half"><canvas id="chartMonthlySpent"></canvas></div>
           <div class="chart-half"><canvas id="chartMonthlyCount"></canvas></div>
         </div>
-      </div>
+        <div class="chart-insight">
+          <span class="chart-insight-icon">📉</span>
+          <span class="chart-insight-text">Compare seus gastos ao longo do tempo</span>
+        </div>
+      </div> 
     </div>
 
     <div class="hr" style="margin:16px 0"></div>
@@ -341,7 +353,7 @@ export function buildCharts() {
     options: {
       responsive: true,
       maintainAspectRatio: false,
-      layout: { padding: { top: 32, bottom: 10 } },
+        layout: { padding: { top: 32, bottom: 10 } },
       plugins: {
         legend: { display: false },
         tooltip: {

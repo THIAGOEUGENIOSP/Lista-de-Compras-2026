@@ -10,6 +10,9 @@ import {
   registerShoppingCategoryCorrection,
   setSharedShoppingCategoryCorrections,
 } from "./utils/shoppingCategories.js";
+import { debounce, throttle } from "./utils/debounce.js";
+import { exportToCSV, exportToJSON, generateShareText, copyToClipboard } from "./utils/export.js";
+import { addPriceToHistory } from "./utils/priceHistory.js";
 
 import { mountToast } from "./components/toast.js";
 import { renderHeader } from "./components/header.js";
@@ -61,6 +64,7 @@ const root = document.getElementById("app");
 const toast = mountToast(document.body);
 const UI_PREFS_KEY = "shoppingUiPrefs";
 const BUDGET_STORE_KEY = "shoppingBudgetsByPeriod";
+const FAVORITES_KEY = "shoppingFavorites";
 const ALLOWED_STATUS_FILTERS = new Set(["ALL", "PENDENTE", "COMPRADO"]);
 const ALLOWED_SORT_KEYS = new Set(["name_asc", "value_desc", "value_asc", "created_desc"]);
 
@@ -87,6 +91,7 @@ function saveUiPrefs() {
   const payload = {
     filterStatus: state.filterStatus,
     filterCollaborator: state.filterCollaborator,
+    filterCategory: state.filterCategory,
     searchText: state.searchText,
     sortKey: state.sortKey,
   };
@@ -110,9 +115,25 @@ function saveBudgetStore(store) {
   localStorage.setItem(BUDGET_STORE_KEY, JSON.stringify(store || {}));
 }
 
+function loadFavorites() {
+  try {
+    const raw = localStorage.getItem(FAVORITES_KEY);
+    if (!raw) return new Set();
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? new Set(parsed) : new Set();
+  } catch {
+    return new Set();
+  }
+}
+
+function saveFavorites(favorites) {
+  localStorage.setItem(FAVORITES_KEY, JSON.stringify(Array.from(favorites)));
+}
+
 const state = {
   theme: getTheme(),
   collaboratorName: localStorage.getItem("collaboratorName") || "",
+  favorites: loadFavorites(),
 
   cursorDate: (() => {
     const saved = localStorage.getItem("cursorMonth");
@@ -128,6 +149,7 @@ const state = {
 
   filterStatus: safeStatusFilter(uiPrefs.filterStatus || "ALL"),
   filterCollaborator: String(uiPrefs.filterCollaborator || "ALL"),
+  filterCategory: String(uiPrefs.filterCategory || "ALL"),
   searchText: String(uiPrefs.searchText || ""),
   sortKey: safeSortKey(uiPrefs.sortKey || "name_asc"),
   deletedCount: 0,
@@ -145,6 +167,7 @@ const state = {
 
   charts: null,
   delegatedBound: false,
+  analyticsLoaded: false,
 };
 
 function saveCursor() {
@@ -591,6 +614,10 @@ function applyFilters() {
     );
   }
 
+  if (state.filterCategory && state.filterCategory !== "ALL") {
+    arr = arr.filter((it) => it.categoria === state.filterCategory);
+  }
+
   const q = (state.searchText || "").trim().toLowerCase();
   if (q) {
     arr = arr.filter((it) => (it.nome || "").toLowerCase().includes(q));
@@ -625,6 +652,7 @@ function rerenderListOnly() {
     state.searchText,
     state.showBought,
     state.showPending,
+    state.favorites
   );
 }
 
@@ -638,6 +666,7 @@ function rerenderTableOnly() {
     state.searchText,
     state.showBought,
     state.showPending,
+    state.favorites
   );
 }
 
@@ -823,6 +852,7 @@ function renderApp() {
   const economy = computeEconomyInsights(state.items);
 
   root.innerHTML = `
+    <div id="pageTop"></div>
     <div class="container">
       ${renderHeader({
         periodLabel,
@@ -832,6 +862,8 @@ function renderApp() {
         softDeleteEnabled: state.softDeleteEnabled,
         overBudgetCount: overBudgetCategories.length,
         overBudgetTitle: overBudgetCategories.join(" • "),
+        categories: getShoppingCategories(),
+        selectedCategory: state.filterCategory || "ALL",
       })}
 
       <div style="margin-top:12px">
@@ -848,8 +880,8 @@ function renderApp() {
       <div class="grid main" style="margin-top:12px">
         <div>
           ${renderItemListControls(state)}
-          ${renderItemTable(filtered, state.sortKey, state.searchText, state.showBought, state.showPending)}
-          ${renderItemMobileList(filtered, state.sortKey, state.searchText, state.showBought, state.showPending)}
+          ${renderItemTable(filtered, state.sortKey, state.searchText, state.showBought, state.showPending, state.favorites)}
+          ${renderItemMobileList(filtered, state.sortKey, state.searchText, state.showBought, state.showPending, state.favorites)}
         </div>
       </div>
 
@@ -899,20 +931,118 @@ function renderApp() {
     if (keyInput)   keyInput.value = existingKey;
   }
 
-  (async () => {
-    try {
-      const priceBuckets = computePriceBuckets(state.items);
-      const statusCounts = computeStatusCounts(state.items);
-      const monthlySeries = await computeMonthlySeries();
-      updateCharts({
-        charts: state.charts,
-        priceBuckets,
-        monthlySeries,
-        statusCounts,
-      });
-    } catch (err) {
-      toastError("Charts", err, "Falha ao montar gráficos");
+  if (!state.delegatedBound) {
+    bindDelegatedEvents();
+    state.delegatedBound = true;
+  }
+
+  bindPerRenderInputs();
+
+  // Lazy loading de analytics usando Intersection Observer
+  setupAnalyticsLazyLoad();
+
+  // Setup botão voltar ao topo
+  setupBackToTop();
+}
+
+function scrollToTop() {
+  const targets = new Set([
+    document.scrollingElement,
+    document.documentElement,
+    document.body,
+    root,
+  ]);
+
+  const scrollableElements = Array.from(document.querySelectorAll("body *"))
+    .filter((el) => {
+      if (!(el instanceof HTMLElement)) return false;
+      const style = getComputedStyle(el);
+      const overflowY = style.overflowY;
+      return (
+        (overflowY === "auto" || overflowY === "scroll" || overflowY === "overlay") &&
+        el.scrollHeight > el.clientHeight
+      );
+    });
+
+  scrollableElements.forEach((el) => targets.add(el));
+
+  targets.forEach((el) => {
+    if (!el) return;
+    if (typeof el.scrollTo === "function") {
+      try {
+        el.scrollTo({ top: 0, left: 0, behavior: "smooth" });
+      } catch {}
     }
+    try {
+      el.scrollTop = 0;
+    } catch {}
+  });
+
+  try {
+    window.scrollTo({ top: 0, left: 0, behavior: "smooth" });
+  } catch {}
+  document.documentElement.scrollTop = 0;
+  document.body.scrollTop = 0;
+}
+
+window.scrollToTop = scrollToTop;
+
+function setupBackToTop() {
+  const backToTopBtn = document.getElementById("backToTop");
+  if (!backToTopBtn) return;
+
+  // Mostrar/esconder botão baseado no scroll
+  const toggleBackToTop = () => {
+    if (window.scrollY > 300) {
+      backToTopBtn.classList.add("visible");
+    } else {
+      backToTopBtn.classList.remove("visible");
+    }
+  };
+
+  backToTopBtn.addEventListener("click", (e) => {
+    e.preventDefault();
+    scrollToTop();
+  });
+
+  window.addEventListener("scroll", throttle(toggleBackToTop, 100));
+  toggleBackToTop(); // Verificar estado inicial
+}
+
+function setupAnalyticsLazyLoad() {
+  const analyticsSection = document.querySelector(".analytics-card");
+  if (!analyticsSection) return;
+
+  // Se já carregou, não faz nada
+  if (state.analyticsLoaded) return;
+
+  const observer = new IntersectionObserver(
+    (entries) => {
+      entries.forEach((entry) => {
+        if (entry.isIntersecting && !state.analyticsLoaded) {
+          state.analyticsLoaded = true;
+          loadAnalyticsData();
+          observer.disconnect();
+        }
+      });
+    },
+    { threshold: 0.1, rootMargin: "100px" }
+  );
+
+  observer.observe(analyticsSection);
+}
+
+async function loadAnalyticsData() {
+  try {
+    const priceBuckets = computePriceBuckets(state.items);
+    const statusCounts = computeStatusCounts(state.items);
+    const monthlySeries = await computeMonthlySeries();
+    updateCharts({
+      charts: state.charts,
+      priceBuckets,
+      monthlySeries,
+      statusCounts,
+    });
 
     try {
       const topItems = await computeTopItemsAllTime(state.items);
@@ -921,14 +1051,9 @@ function renderApp() {
     } catch {
       /* falha silenciosa — recurso não crítico */
     }
-  })();
-
-  if (!state.delegatedBound) {
-    bindDelegatedEvents();
-    state.delegatedBound = true;
+  } catch (err) {
+    toastError("Analytics", err, "Falha ao carregar analytics");
   }
-
-  bindPerRenderInputs();
 }
 
 function bindPerRenderInputs() {
@@ -952,15 +1077,28 @@ function bindPerRenderInputs() {
     });
   }
 
-  // busca (sem travar)
-  const s = qs("#searchInput");
-  if (s) {
-    s.addEventListener("input", () => {
-      state.searchText = s.value;
+  // filtro por categoria
+  const categoryFilter = qs("#categoryFilter");
+  if (categoryFilter) {
+    categoryFilter.addEventListener("change", () => {
+      state.filterCategory = categoryFilter.value || "ALL";
       saveUiPrefs();
       rerenderTableOnly();
       rerenderListOnly();
     });
+  }
+
+  // busca (com debounce para melhorar performance)
+  const s = qs("#searchInput");
+  if (s) {
+    const debouncedSearch = debounce(() => {
+      state.searchText = s.value;
+      saveUiPrefs();
+      rerenderTableOnly();
+      rerenderListOnly();
+    }, 300);
+    
+    s.addEventListener("input", debouncedSearch);
   }
 
   // sort
@@ -1235,6 +1373,14 @@ function bindPerRenderInputs() {
           const updated = normalizeItem(await updateItem(id, payload));
           state.items = state.items.map((x) => (x.id === id ? updated : x));
           toast.show({ title: "Salvo", message: "Item atualizado." });
+          
+          // Salvar histórico de preços
+          addPriceToHistory(
+            payload.nome,
+            payload.valor_unitario,
+            state.currentPeriod?.nome || periodName(state.cursorDate),
+            payload.categoria
+          );
         } else {
           const created = normalizeItem(
             await addItem({
@@ -1245,6 +1391,14 @@ function bindPerRenderInputs() {
           );
           state.items = [created, ...state.items];
           toast.show({ title: "Adicionado", message: "Item criado." });
+          
+          // Salvar histórico de preços
+          addPriceToHistory(
+            payload.nome,
+            payload.valor_unitario,
+            state.currentPeriod?.nome || periodName(state.cursorDate),
+            payload.categoria
+          );
         }
 
         if (shouldLearnCategory) {
@@ -1283,6 +1437,7 @@ function bindDelegatedEvents() {
     if (!el) return;
 
     const action = el.dataset.action;
+    e.preventDefault();
 
     try {
       if (action === "change-name") {
@@ -1294,19 +1449,54 @@ function bindDelegatedEvents() {
       }
 
       if (action === "toggle-theme") {
-        state.theme = state.theme === "dark" ? "light" : "dark";
-        setTheme(state.theme);
+        const next = state.theme === "dark" ? "light" : "dark";
+        setTheme(next);
+        state.theme = next;
         renderApp();
         return;
       }
 
-      if (action === "scroll-top") {
-        const target = document.querySelector('[data-action="open-add"]');
-        if (target) {
-          target.scrollIntoView({ behavior: "smooth", block: "start" });
+      if (action === "export-csv") {
+        const periodLabel = state.currentPeriod?.nome || periodName(state.cursorDate);
+        exportToCSV(state.items, periodLabel);
+        toast.show({
+          title: "Exportação",
+          message: "Lista exportada para CSV com sucesso!",
+        });
+        return;
+      }
+
+      if (action === "export-json") {
+        const periodLabel = state.currentPeriod?.nome || periodName(state.cursorDate);
+        exportToJSON(state.items, periodLabel);
+        toast.show({
+          title: "Exportação",
+          message: "Lista exportada para JSON com sucesso!",
+        });
+        return;
+      }
+
+      if (action === "share-list") {
+        const periodLabel = state.currentPeriod?.nome || periodName(state.cursorDate);
+        const kpis = computeKPIs(state.items);
+        const shareText = generateShareText(state.items, kpis, periodLabel);
+        const copied = await copyToClipboard(shareText);
+        if (copied) {
+          toast.show({
+            title: "Compartilhado",
+            message: "Lista copiada para a área de transferência!",
+          });
         } else {
-          window.scrollTo({ top: 0, behavior: "smooth" });
+          toast.show({
+            title: "Erro",
+            message: "Não foi possível copiar a lista.",
+          });
         }
+        return;
+      }
+
+      if (action === "scroll-top") {
+        scrollToTop();
         return;
       }
 
@@ -1427,9 +1617,9 @@ function bindDelegatedEvents() {
       if (action === "save-groq-key") {
         const input = document.getElementById("ai-key-input");
         const key   = input?.value?.trim();
-        if (!key) { toast.show("Cole a chave antes de salvar.", "warn"); return; }
+        if (!key) { toast.show({ title: "Aviso", message: "Cole a chave antes de salvar.", type: "warning" }); return; }
         saveLocalKey(key);
-        toast.show("Chave salva! Clique em Analisar lista.", "ok");
+        toast.show({ title: "Sucesso", message: "Chave salva! Clique em Analisar lista.", type: "success" });
         return;
       }
 
@@ -1439,7 +1629,7 @@ function bindDelegatedEvents() {
         if (input) input.value = "";
         const keySection = document.getElementById("ai-key-section");
         if (keySection) keySection.style.display = "none";
-        toast.show("Chave removida.", "ok");
+        toast.show({ title: "Sucesso", message: "Chave removida.", type: "success" });
         return;
       }
 
@@ -1452,6 +1642,32 @@ function bindDelegatedEvents() {
         } else if (lower.includes("pendentes")) {
           state.showPending = !state.showPending;
         }
+        rerenderTableOnly();
+        rerenderListOnly();
+        return;
+      }
+
+      if (action === "toggle-favorite") {
+        const itemName = el.dataset.name;
+        if (!itemName) return;
+        
+        if (state.favorites.has(itemName)) {
+          state.favorites.delete(itemName);
+          toast.show({
+            title: "Removido dos favoritos",
+            message: `"${itemName}" não está mais nos favoritos`,
+            type: "info"
+          });
+        } else {
+          state.favorites.add(itemName);
+          toast.show({
+            title: "Adicionado aos favoritos",
+            message: `"${itemName}" foi adicionado aos favoritos`,
+            type: "success"
+          });
+        }
+        
+        saveFavorites(state.favorites);
         rerenderTableOnly();
         rerenderListOnly();
         return;

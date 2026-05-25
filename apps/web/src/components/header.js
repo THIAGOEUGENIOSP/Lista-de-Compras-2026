@@ -6,6 +6,8 @@ export function renderHeader({
   softDeleteEnabled = false,
   overBudgetCount = 0,
   overBudgetTitle = "",
+  categories = [],
+  selectedCategory = "ALL",
 }) {
   const restoreLabel = softDeleteEnabled
     ? `Restaurar (${deletedCount})`
@@ -15,6 +17,11 @@ export function renderHeader({
     : "Exclusão indisponível";
 
   const themeIcon = theme === "dark" ? "🌙" : "☀️";
+
+  // Gerar opções de categoria
+  const categoryOptions = categories.map(cat => 
+    `<option value="${cat}" ${selectedCategory === cat ? "selected" : ""}>${cat}</option>`
+  ).join("");
 
   return `
   <div class="header-card">
@@ -28,16 +35,25 @@ export function renderHeader({
       <div class="header-user">
         <div class="user-badge" title="Colaborador">👤 ${userName || "—"}</div>
         <button class="btn small btn-theme-toggle" data-action="toggle-theme" title="Alternar tema">${themeIcon}</button>
+        <button class="btn small btn-export" data-action="export-csv" title="Exportar CSV">📥 CSV</button>
+        <button class="btn small btn-export" data-action="export-json" title="Exportar JSON">📥 JSON</button>
+        <button class="btn small btn-export" data-action="share-list" title="Compartilhar lista">📤</button>
         <button class="btn small btn-change-name" data-action="logout">Trocar nome</button>
       </div>
     </div>
 
-    <!-- Linha 2: Navegação de período + aviso de orçamento -->
+    <!-- Linha 2: Navegação de período + aviso de orçamento + filtro categoria -->
     <div class="header-row header-row-period">
       <div class="period-nav">
         <button class="btn small" data-action="prev-month" title="Mês anterior">◀</button>
         <div class="period-badge" title="Período atual">📅 <span>${periodLabel}</span></div>
         <button class="btn small" data-action="next-month" title="Próximo mês">▶</button>
+      </div>
+      <div class="category-filter">
+        <select id="categoryFilter" class="input small" title="Filtrar por categoria">
+          <option value="ALL" ${selectedCategory === "ALL" ? "selected" : ""}>Todas categorias</option>
+          ${categoryOptions}
+        </select>
       </div>
       ${overBudgetCount > 0
         ? `<div class="over-budget-badge" title="${overBudgetTitle || ""}">⚠️ <span>${overBudgetCount} categoria(s) estourada(s)</span></div>`
@@ -62,5 +78,10 @@ export function renderHeader({
 
   <!-- FAB: botão flutuante (só mobile) -->
   <button class="fab-add" data-action="open-add" title="Adicionar item">+</button>
+  
+  <!-- Botão voltar ao topo -->
+  <button class="back-to-top" id="backToTop" data-action="scroll-top" type="button" onclick="(document.scrollingElement || document.documentElement || document.body).scrollTo({ top: 0, left: 0, behavior: 'smooth' }); window.scrollTo({ top: 0, left: 0, behavior: 'smooth' });" title="Voltar ao topo" aria-label="Voltar ao topo">
+    ↑
+  </button>
   `;
 }

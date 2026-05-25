@@ -1686,10 +1686,7 @@ function bindDelegatedEvents() {
         state.cursorDate = addMonths(state.cursorDate, +1);
         saveCursor();
         await loadDataForPeriod();
-        toast.show({
-          title: "Navegando",
-          message: `Você está visualizando ${nextMonthName}.`,
-        });
+        alert(`Você está visualizando ${nextMonthName}.`);
         renderApp();
         return;
       }
@@ -1773,12 +1770,11 @@ function bindDelegatedEvents() {
             duration: 6000,
           });
         } else {
-          toast.show({
-            title: state.softDeleteEnabled ? "Lixeira" : "Exclusão permanente",
-            message: state.softDeleteEnabled
+          alert(
+            state.softDeleteEnabled
               ? `${deletedItem?.nome || "Item"} movido para a lixeira.`
-              : `${deletedItem?.nome || "Item"} removido permanentemente.`,
-          });
+              : `${deletedItem?.nome || "Item"} removido permanentemente.`
+          );
         }
         if (state.auditLogEnabled) {
           try {
@@ -2064,10 +2060,7 @@ function bindDelegatedEvents() {
           createdByName: state.collaboratorName,
         });
 
-        toast.show({
-          title: "✓ Copiado com sucesso",
-          message: `${qtd} item${qtd !== 1 ? "ns" : ""} copiado${qtd !== 1 ? "s" : ""} para ${nextPeriod.nome}.`,
-        });
+        alert(`✓ Copiado com sucesso!\n\n${qtd} item${qtd !== 1 ? "ns" : ""} copiado${qtd !== 1 ? "s" : ""} para ${nextPeriod.nome}.`);
         return;
       }
 

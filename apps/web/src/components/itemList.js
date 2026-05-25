@@ -114,15 +114,16 @@ function renderTableBlock({
   showSummary = true,
   toggleLabel = "",
   isCollapsed = false,
+  favorites = new Set(),
 }) {
   const headSub = `
     <div class="category-head-sub">
       <div class="cat-count">${items.length} item(ns)</div>
       <div class="row" style="gap:6px">
-        <button class="btn small category-collapse-btn" data-action="toggle-bought">
+        <button class="btn small category-collapse-btn" data-action="toggle-bought" type="button">
           ${toggleLabel || "▾"}
         </button>
-        <button class="btn small category-top-btn" data-action="scroll-top">Início</button>
+        <button class="btn small category-top-btn" data-action="scroll-top" type="button" onclick="(document.scrollingElement || document.documentElement || document.body).scrollTo({ top: 0, left: 0, behavior: 'smooth' }); window.scrollTo({ top: 0, left: 0, behavior: 'smooth' });">Início</button>
       </div>
     </div>
   `;
@@ -166,11 +167,23 @@ function renderTableBlock({
 
               const catLabel = normalizeShoppingCategory(it?.categoria || "Geral");
               const catMeta = getCategoryMeta(catLabel);
+              const isFavorite = favorites.has(it.nome);
 
               return `
               <tr class="${isBought ? "row-bought" : "row-pending"} ${catMeta.className}">
                 <td>
-                  <div class="item-name" style="font-weight:700">${it.nome}</div>
+                  <div class="item-name-row">
+                    <button 
+                      class="btn-icon favorite-btn ${isFavorite ? 'favorite-active' : ''}" 
+                      data-action="toggle-favorite" 
+                      data-name="${escapeHtml(it.nome)}"
+                      title="${isFavorite ? 'Remover dos favoritos' : 'Adicionar aos favoritos'}"
+                      aria-label="${isFavorite ? 'Remover dos favoritos' : 'Adicionar aos favoritos'}"
+                    >
+                      ${isFavorite ? '⭐' : '☆'}
+                    </button>
+                    <div class="item-name" style="font-weight:700">${it.nome}</div>
+                  </div>
                   <div class="item-cat"><span class="cat-tag ${catMeta.className}">${catLabel}</span></div>
                 </td>
 
@@ -334,6 +347,7 @@ export function renderItemTable(
   searchText = "",
   showBought = false,
   showPending = true,
+  favorites = new Set(),
 ) {
   const hasSearch = String(searchText || "").trim().length > 0;
   const sorted = sortItems(items, sortKey);
@@ -351,6 +365,7 @@ export function renderItemTable(
           metaClass: "cat-general",
           icon: "🔎",
           showSummary: false,
+          favorites,
         })}
       </div>
     `;
@@ -369,6 +384,7 @@ export function renderItemTable(
         showSummary: false,
         toggleLabel: showPending ? "▾" : "▸",
         isCollapsed: !showPending,
+        favorites,
       })}
       ${renderTableBlock({
         title: "Comprados",
@@ -378,6 +394,7 @@ export function renderItemTable(
         showSummary: false,
         toggleLabel: showBought ? "▾" : "▸",
         isCollapsed: !showBought,
+        favorites,
       })}
     </div>
   `;
@@ -389,6 +406,7 @@ export function renderItemMobileList(
   searchText = "",
   showBought = false,
   showPending = true,
+  favorites = new Set(),
 ) {
   const hasSearch = String(searchText || "").trim().length > 0;
   const sorted = sortItems(items, sortKey);
@@ -409,10 +427,10 @@ export function renderItemMobileList(
         <div class="category-head-sub">
           <div class="cat-count">${blockItems.length} item(ns)</div>
           <div class="row" style="gap:6px">
-            <button class="btn small category-collapse-btn" data-action="toggle-bought">
+            <button class="btn small category-collapse-btn" data-action="toggle-bought" type="button">
               ${toggleLabel || "▾"}
             </button>
-            <button class="btn small category-top-btn" data-action="scroll-top">Início</button>
+            <button class="btn small category-top-btn" data-action="scroll-top" type="button" onclick="(document.scrollingElement || document.documentElement || document.body).scrollTo({ top: 0, left: 0, behavior: 'smooth' }); window.scrollTo({ top: 0, left: 0, behavior: 'smooth' });">Início</button>
           </div>
         </div>
       `;
@@ -447,12 +465,24 @@ export function renderItemMobileList(
 
             const catLabel = normalizeShoppingCategory(it?.categoria || "Geral");
             const catMeta = getCategoryMeta(catLabel);
+            const isFavorite = favorites.has(it.nome);
 
             return `
             <div class="mcard ${isBought ? "row-bought" : "row-pending"} ${catMeta.className}">
               <div class="mcard-inner">
                 <div class="mcard-header">
-                  <div class="mname">${it.nome}</div>
+                  <div class="mname-row">
+                    <button 
+                      class="btn-icon favorite-btn ${isFavorite ? 'favorite-active' : ''}" 
+                      data-action="toggle-favorite" 
+                      data-name="${escapeHtml(it.nome)}"
+                      title="${isFavorite ? 'Remover dos favoritos' : 'Adicionar aos favoritos'}"
+                      aria-label="${isFavorite ? 'Remover dos favoritos' : 'Adicionar aos favoritos'}"
+                    >
+                      ${isFavorite ? '⭐' : '☆'}
+                    </button>
+                    <div class="mname">${it.nome}</div>
+                  </div>
                   <div class="mtotal">
                     <div class="label">Total</div>
                     <div class="value">${brl(totalItem)}</div>

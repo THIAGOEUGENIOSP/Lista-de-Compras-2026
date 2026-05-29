@@ -2009,9 +2009,60 @@ tr.row-summary td {
 
 /* ===== Mobile: header ===== */
 @media (max-width: 560px) {
+  .header-card {
+    padding: 14px;
+    overflow: hidden;
+  }
   .header-row-top {
     flex-wrap: wrap;
+    align-items: flex-start;
     gap: 8px;
+  }
+  .header-brand {
+    width: 100%;
+    min-width: 0;
+  }
+  .header-user {
+    width: 100%;
+    min-width: 0;
+    flex-wrap: wrap;
+    align-items: stretch;
+    gap: 8px;
+  }
+  .header-user .btn.small {
+    justify-content: center;
+    min-width: 58px;
+    padding: 8px 10px;
+  }
+  .header-user .btn-export {
+    flex: 1 1 76px;
+  }
+  .user-badge {
+    flex: 1 1 100%;
+    justify-content: center;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .header-row-period {
+    width: 100%;
+    align-items: stretch;
+  }
+  .period-nav {
+    width: 100%;
+    justify-content: space-between;
+  }
+  .period-badge {
+    flex: 1;
+    justify-content: center;
+    min-width: 0;
+  }
+  .category-filter {
+    width: 100%;
+  }
+  .category-filter .input.small {
+    width: 100%;
+    min-width: 0;
   }
   .btn-change-name { display: none; } /* acessa via admin colapsável no mobile */
   .header-brand h1 { font-size: 16px; }

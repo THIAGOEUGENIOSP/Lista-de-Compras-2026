@@ -313,6 +313,11 @@ export function renderItemListControls(state) {
         <option value="value_desc"   ${state.sortKey === "value_desc"   ? "selected" : ""}>💰 Maior valor</option>
         <option value="value_asc"    ${state.sortKey === "value_asc"    ? "selected" : ""}>💸 Menor valor</option>
       </select>
+
+      ${totalPending > 0 ? `
+      <button class="btn btn-shopping-mode only-mobile" data-action="open-shopping-mode" title="Modo Compras">
+        🛒 Modo Compras
+      </button>` : ""}
     </div>
   </div>
   `;
@@ -407,6 +412,7 @@ export function renderItemMobileList(
   showBought = false,
   showPending = true,
   favorites = new Set(),
+  priceHistoryMap = {},
 ) {
   const hasSearch = String(searchText || "").trim().length > 0;
   const sorted = sortItems(items, sortKey);
@@ -467,14 +473,31 @@ export function renderItemMobileList(
             const catMeta = getCategoryMeta(catLabel);
             const isFavorite = favorites.has(it.nome);
 
+            // Alerta de preço
+            const histKey = String(it.nome || "").trim().toLowerCase();
+            const lastPriceEntry = priceHistoryMap[histKey];
+            let priceAlert = "";
+            if (lastPriceEntry && Number(it.valor_unitario) > 0 && Number(lastPriceEntry.valor_unitario) > 0) {
+              const curr = Number(it.valor_unitario);
+              const prev = Number(lastPriceEntry.valor_unitario);
+              const pct = ((curr - prev) / prev) * 100;
+              if (pct >= 20) {
+                priceAlert = `<span class="price-alert price-alert-up">⬆ +${pct.toFixed(0)}%</span>`;
+              } else if (pct <= -15) {
+                priceAlert = `<span class="price-alert price-alert-down">⬇ ${pct.toFixed(0)}%</span>`;
+              }
+            }
+
             return `
-            <div class="mcard ${isBought ? "row-bought" : "row-pending"} ${catMeta.className}">
+            <div class="mcard ${isBought ? "row-bought" : "row-pending"} ${catMeta.className}" data-swipe-id="${it.id}">
+              <div class="swipe-hint swipe-hint-left">✓ Comprado</div>
+              <div class="swipe-hint swipe-hint-right">🗑 Deletar</div>
               <div class="mcard-inner">
                 <div class="mcard-header">
                   <div class="mname-row">
-                    <button 
-                      class="btn-icon favorite-btn ${isFavorite ? 'favorite-active' : ''}" 
-                      data-action="toggle-favorite" 
+                    <button
+                      class="btn-icon favorite-btn ${isFavorite ? 'favorite-active' : ''}"
+                      data-action="toggle-favorite"
                       data-name="${escapeHtml(it.nome)}"
                       title="${isFavorite ? 'Remover dos favoritos' : 'Adicionar aos favoritos'}"
                       aria-label="${isFavorite ? 'Remover dos favoritos' : 'Adicionar aos favoritos'}"
@@ -482,6 +505,7 @@ export function renderItemMobileList(
                       ${isFavorite ? '⭐' : '☆'}
                     </button>
                     <div class="mname">${it.nome}</div>
+                    ${priceAlert}
                   </div>
                   <div class="mtotal">
                     <div class="label">Total</div>

@@ -32,6 +32,9 @@ export function renderBudgetPanel({ rows, totalSpent, totalBudget, collapsed }) 
           <button class="btn small" id="toggleBudgetPanel" data-action="toggle-budget-panel">
             ${collapsed ? "Expandir" : "Recolher"}
           </button>
+          <button class="btn small primary" data-action="suggest-budgets" title="Sugere metas com base nos últimos 3 meses">
+            💡 Sugerir metas
+          </button>
           <div class="badge ${hasAnyBudget ? "ok" : ""}">
             Meta total: <b>${brl(totalBudget || 0)}</b>
           </div>

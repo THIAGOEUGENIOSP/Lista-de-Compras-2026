@@ -12,7 +12,7 @@ import {
 } from "./utils/shoppingCategories.js";
 import { debounce, throttle } from "./utils/debounce.js";
 import { exportToCSV, exportToJSON, generateShareText, copyToClipboard } from "./utils/export.js";
-import { addPriceToHistory } from "./utils/priceHistory.js";
+import { addPriceToHistory, getPriceHistoryMap } from "./utils/priceHistory.js";
 
 import { mountToast } from "./components/toast.js";
 import { renderHeader } from "./components/header.js";
@@ -170,6 +170,9 @@ const state = {
   charts: null,
   delegatedBound: false,
   analyticsLoaded: false,
+  shoppingMode: false,
+  priceHistoryMap: {},
+  recurringItems: [],
 };
 
 function saveCursor() {
@@ -795,6 +798,7 @@ async function loadDataForPeriod() {
 
   const raw = await fetchItems(state.currentPeriod.id);
   state.items = (raw || []).map(normalizeItem);
+  state.priceHistoryMap = getPriceHistoryMap(state.currentPeriod?.nome);
   state.deletedCount = await countDeletedByPeriod(state.currentPeriod.id);
   if (state.auditLogEnabled) {
     try {
@@ -815,6 +819,17 @@ async function loadDataForPeriod() {
       saveUiPrefs();
     }
   }
+
+  // Carrega itens recorrentes em background (não bloqueia o render)
+  computeRecurringItems().then(items => {
+    state.recurringItems = items;
+    // Atualiza só o banner se já renderizou
+    const banner = document.querySelector(".recurring-banner");
+    const wrap = banner?.parentElement;
+    if (wrap && items.length > 0 && !banner) renderApp();
+    else if (banner && items.length === 0) banner.remove();
+    else if (!banner && items.length > 0) renderApp();
+  }).catch(() => {});
 }
 
 async function computeMonthlySeries() {
@@ -918,6 +933,195 @@ function renderTopItemsList(items) {
     </div>`;
 }
 
+/* =========================================================
+   BANNER DE ITENS RECORRENTES
+   ========================================================= */
+function renderRecurringBanner() {
+  const items = state.recurringItems || [];
+  if (!items.length) return "";
+  return `
+  <div class="recurring-banner card" style="margin-top:10px">
+    <div class="recurring-header">
+      <div>
+        <span class="recurring-title">🔄 Itens recorrentes disponíveis</span>
+        <span class="recurring-sub">${items.length} itens que você costuma comprar</span>
+      </div>
+      <div class="recurring-actions">
+        <button class="btn small primary" data-action="add-all-recurring">＋ Adicionar todos</button>
+        <button class="btn small" data-action="dismiss-recurring">✕</button>
+      </div>
+    </div>
+    <div class="recurring-list">
+      ${items.map(it => `
+        <button class="recurring-item-btn" data-action="add-recurring" data-nome="${escapeHtml(it.nome)}">
+          <span class="recurring-item-name">${escapeHtml(it.nome)}</span>
+          <span class="recurring-item-freq">${it.meses}× meses</span>
+        </button>`).join("")}
+    </div>
+  </div>`;
+}
+
+/* =========================================================
+   MODO COMPRAS
+   ========================================================= */
+function renderShoppingMode() {
+  const pending = state.items.filter(it => it.status === "PENDENTE");
+  const total   = state.items.length;
+  const bought  = total - pending.length;
+
+  const overlay = document.getElementById("shopping-mode-overlay");
+  if (!overlay) return;
+
+  if (pending.length === 0) {
+    overlay.innerHTML = `
+      <div class="sm-header">
+        <button class="btn sm-exit-btn" data-action="exit-shopping-mode">✕ Sair</button>
+      </div>
+      <div class="sm-done">
+        <div class="sm-done-icon">🎉</div>
+        <div class="sm-done-title">Todas as compras concluídas!</div>
+        <div class="sm-done-sub">Total: ${brl(state.items.reduce((a,i)=>a+totalOfItem(i),0))}</div>
+        <button class="btn primary" data-action="exit-shopping-mode" style="margin-top:24px">Voltar à lista</button>
+      </div>`;
+    return;
+  }
+
+  overlay.innerHTML = `
+    <div class="sm-header">
+      <div class="sm-progress-wrap">
+        <div class="sm-progress-label">${bought} de ${total} comprados</div>
+        <div class="sm-progress-track">
+          <div class="sm-progress-fill" style="width:${total?Math.round(bought/total*100):0}%"></div>
+        </div>
+      </div>
+      <button class="btn small sm-exit-btn" data-action="exit-shopping-mode">✕ Sair</button>
+    </div>
+    <div class="sm-list">
+      ${pending.map(it => {
+        const total_ = totalOfItem(it);
+        const qty = formatQuantidade(it.quantidade, it.categoria);
+        return `
+        <div class="sm-item" data-item-id="${it.id}">
+          <div class="sm-item-info">
+            <div class="sm-item-name">${escapeHtml(it.nome)}</div>
+            <div class="sm-item-meta">${qty} · ${brl(total_)}</div>
+          </div>
+          <button class="btn primary sm-check-btn" data-action="sm-buy" data-id="${it.id}" aria-label="Marcar como comprado">
+            ✓
+          </button>
+        </div>`;
+      }).join("")}
+    </div>`;
+}
+
+function openShoppingMode() {
+  const overlay = document.getElementById("shopping-mode-overlay");
+  if (!overlay) return;
+  overlay.style.display = "flex";
+  renderShoppingMode();
+  document.body.style.overflow = "hidden";
+}
+
+function exitShoppingMode() {
+  const overlay = document.getElementById("shopping-mode-overlay");
+  if (overlay) overlay.style.display = "none";
+  document.body.style.overflow = "";
+  state.shoppingMode = false;
+}
+
+/* =========================================================
+   ITENS RECORRENTES
+   ========================================================= */
+async function computeRecurringItems() {
+  try {
+    const periods = await listRecentPeriods(12);
+    const prevPeriods = periods
+      .filter(p => p.id !== state.currentPeriod?.id)
+      .sort((a, b) => new Date(b.data_inicio) - new Date(a.data_inicio))
+      .slice(0, 3);
+
+    if (!prevPeriods.length) return [];
+
+    const res = await sb.from("items")
+      .select("nome, periodo_id, status")
+      .in("periodo_id", prevPeriods.map(p => p.id));
+
+    if (res.error) return [];
+
+    const countMap = new Map();
+    for (const it of res.data || []) {
+      const key = normalizeNameKey(it.nome || "");
+      const label = String(it.nome || "").trim();
+      if (!key || !label) continue;
+      const row = countMap.get(key) || { label, months: new Set() };
+      row.months.add(it.periodo_id);
+      countMap.set(key, row);
+    }
+
+    const currentNames = new Set(state.items.map(it => normalizeNameKey(it.nome || "")));
+
+    return Array.from(countMap.values())
+      .filter(r => r.months.size >= 2 && !currentNames.has(normalizeNameKey(r.label)))
+      .sort((a, b) => b.months.size - a.months.size)
+      .slice(0, 8)
+      .map(r => ({ nome: r.label, meses: r.months.size }));
+  } catch {
+    return [];
+  }
+}
+
+/* =========================================================
+   SUGESTÃO DE ORÇAMENTO
+   ========================================================= */
+async function suggestBudgets() {
+  try {
+    toast.show({ title: "Calculando...", message: "Buscando média dos últimos 3 meses", type: "info" });
+
+    const periods = await listRecentPeriods(12);
+    const prevPeriods = periods
+      .filter(p => p.id !== state.currentPeriod?.id)
+      .sort((a, b) => new Date(b.data_inicio) - new Date(a.data_inicio))
+      .slice(0, 3);
+
+    if (!prevPeriods.length) {
+      toast.show({ title: "Sem histórico", message: "Precisa de pelo menos 1 mês anterior", type: "warning" });
+      return;
+    }
+
+    const res = await sb.from("items")
+      .select("periodo_id, categoria, quantidade, valor_unitario, status")
+      .in("periodo_id", prevPeriods.map(p => p.id))
+      .eq("status", "COMPRADO");
+
+    if (res.error) throw res.error;
+
+    const items = (res.data || []).map(normalizeItem);
+    const catMap = {};
+    for (const it of items) {
+      const cat = resolveBudgetCategory(it);
+      catMap[cat] = (catMap[cat] || 0) + totalOfItem(it);
+    }
+
+    const nMonths = prevPeriods.length;
+    const suggested = {};
+    for (const [cat, total] of Object.entries(catMap)) {
+      const avg = total / nMonths;
+      suggested[cat] = Math.ceil(avg / 10) * 10; // arredonda para próximo R$10
+    }
+
+    state.budgets = { ...state.budgets, ...suggested };
+    persistBudgetsForCurrentPeriod(state.budgets);
+    renderApp();
+    toast.show({
+      title: "💡 Metas sugeridas!",
+      message: `Com base na média dos últimos ${nMonths} meses. Ajuste conforme necessário.`,
+      type: "success",
+    });
+  } catch (err) {
+    toastError("Erro ao sugerir orçamento", err, "Falha ao calcular médias");
+  }
+}
+
 function renderApp() {
   // Reseta analyticsLoaded para que o lazy-load funcione após re-renders
   // (fix: gráficos ficavam vazios após filtrar/ordenar)
@@ -966,8 +1170,9 @@ function renderApp() {
       <div class="grid main" style="margin-top:12px">
         <div>
           ${renderItemListControls(state)}
+          ${renderRecurringBanner()}
           ${renderItemTable(filtered, state.sortKey, state.searchText, state.showBought, state.showPending, state.favorites)}
-          ${renderItemMobileList(filtered, state.sortKey, state.searchText, state.showBought, state.showPending, state.favorites)}
+          ${renderItemMobileList(filtered, state.sortKey, state.searchText, state.showBought, state.showPending, state.favorites, state.priceHistoryMap)}
         </div>
       </div>
 
@@ -988,6 +1193,9 @@ function renderApp() {
     </div>
 
     <button class="fab-add" data-action="open-add" type="button" title="Adicionar item" aria-label="Adicionar item">+</button>
+
+    <!-- Overlay Modo Compras -->
+    <div id="shopping-mode-overlay" class="shopping-mode-overlay" style="display:none"></div>
   `;
 
   // Troca "Sair" por "Trocar nome"
@@ -1021,6 +1229,7 @@ function renderApp() {
 
   if (!state.delegatedBound) {
     bindDelegatedEvents();
+    setupSwipeGestures();
     state.delegatedBound = true;
   }
 
@@ -1103,6 +1312,77 @@ function setupBackToTop() {
 
   window.addEventListener("scroll", throttle(toggleBackToTop, 100));
   toggleBackToTop(); // Verificar estado inicial
+}
+
+function setupSwipeGestures() {
+  let startX = 0, startY = 0, swipingEl = null, swiping = false;
+  const THRESHOLD = 72;
+  const MAX_VERT = 40;
+
+  document.addEventListener("touchstart", e => {
+    const card = e.target.closest("[data-swipe-id]");
+    if (!card) return;
+    startX = e.touches[0].clientX;
+    startY = e.touches[0].clientY;
+    swipingEl = card;
+    swiping = false;
+  }, { passive: true });
+
+  document.addEventListener("touchmove", e => {
+    if (!swipingEl) return;
+    const dx = e.touches[0].clientX - startX;
+    const dy = e.touches[0].clientY - startY;
+    if (!swiping && Math.abs(dy) > MAX_VERT) { swipingEl = null; return; }
+    if (Math.abs(dx) > 10) swiping = true;
+    if (!swiping) return;
+    const clamped = Math.max(-THRESHOLD * 1.4, Math.min(THRESHOLD * 1.4, dx));
+    const inner = swipingEl.querySelector(".mcard-inner");
+    if (inner) inner.style.transform = `translateX(${clamped}px)`;
+    swipingEl.classList.toggle("swipe-left-active",  dx > THRESHOLD * 0.4);
+    swipingEl.classList.toggle("swipe-right-active", dx < -THRESHOLD * 0.4);
+  }, { passive: true });
+
+  document.addEventListener("touchend", async e => {
+    if (!swipingEl || !swiping) { swipingEl = null; return; }
+    const dx = e.changedTouches[0].clientX - startX;
+    const inner = swipingEl.querySelector(".mcard-inner");
+    const id = swipingEl.dataset.swipeId;
+
+    if (inner) inner.style.transform = "";
+    swipingEl.classList.remove("swipe-left-active", "swipe-right-active");
+
+    if (dx > THRESHOLD && id) {
+      // swipe direita → comprado
+      swipingEl.classList.add("swipe-confirm-buy");
+      await updateItem(id, { status: "COMPRADO" });
+      state.items = state.items.map(it => it.id === id ? { ...it, status: "COMPRADO" } : it);
+      rerenderTableOnly();
+      rerenderListOnly();
+      toast.show({ title: "✅ Comprado!", message: "", type: "success" });
+    } else if (dx < -THRESHOLD && id) {
+      // swipe esquerda → deletar
+      swipingEl.classList.add("swipe-confirm-delete");
+      const item = state.items.find(it => it.id === id);
+      await deleteItem(id);
+      state.items = state.items.filter(it => it.id !== id);
+      rerenderTableOnly();
+      rerenderListOnly();
+      toast.show({
+        title: "🗑 Item removido",
+        message: item?.nome || "",
+        type: "warning",
+        action: { label: "Desfazer", onClick: async () => {
+          if (item) {
+            await addItem({ ...item, id: undefined });
+            await loadDataForPeriod();
+            renderApp();
+          }
+        }},
+      });
+    }
+    swipingEl = null;
+    swiping = false;
+  });
 }
 
 function setupAnalyticsLazyLoad() {
@@ -1668,6 +1948,79 @@ function bindDelegatedEvents() {
         setTheme(next);
         state.theme = next;
         renderApp();
+        return;
+      }
+
+      // ── Modo Compras ──
+      if (action === "open-shopping-mode") {
+        state.shoppingMode = true;
+        openShoppingMode();
+        return;
+      }
+      if (action === "exit-shopping-mode") {
+        exitShoppingMode();
+        return;
+      }
+      if (action === "sm-buy") {
+        const id = el.dataset.id;
+        const item = state.items.find(it => it.id === id);
+        if (!item) return;
+        await updateItem(id, { status: "COMPRADO" });
+        state.items = state.items.map(it => it.id === id ? { ...it, status: "COMPRADO" } : it);
+        renderShoppingMode();
+        return;
+      }
+
+      // ── Itens Recorrentes ──
+      if (action === "add-recurring") {
+        const nome = String(el.dataset.nome || "").trim();
+        if (!nome) return;
+        const categoria = classifyShoppingCategory(nome);
+        await addItem({
+          periodo_id: state.currentPeriod.id,
+          nome,
+          quantidade: 1,
+          valor_unitario: 0,
+          categoria,
+          status: "PENDENTE",
+          criado_por_nome: state.collaboratorName,
+        });
+        state.recurringItems = (state.recurringItems || []).filter(r => r.nome !== nome);
+        await loadDataForPeriod();
+        renderApp();
+        toast.show({ title: "Item adicionado", message: nome, type: "success" });
+        return;
+      }
+      if (action === "add-all-recurring") {
+        const items = state.recurringItems || [];
+        if (!items.length) return;
+        for (const r of items) {
+          const categoria = classifyShoppingCategory(r.nome);
+          await addItem({
+            periodo_id: state.currentPeriod.id,
+            nome: r.nome,
+            quantidade: 1,
+            valor_unitario: 0,
+            categoria,
+            status: "PENDENTE",
+            criado_por_nome: state.collaboratorName,
+          });
+        }
+        state.recurringItems = [];
+        await loadDataForPeriod();
+        renderApp();
+        toast.show({ title: `${items.length} itens adicionados!`, message: "Defina os preços depois", type: "success" });
+        return;
+      }
+      if (action === "dismiss-recurring") {
+        state.recurringItems = [];
+        renderApp();
+        return;
+      }
+
+      // ── Sugestão de orçamento ──
+      if (action === "suggest-budgets") {
+        await suggestBudgets();
         return;
       }
 

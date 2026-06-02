@@ -2545,6 +2545,17 @@ tr.row-summary td {
   }
 }
 
+/* ===== Botão Refresh ===== */
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+.btn-refreshing {
+  pointer-events: none;
+  opacity: .7;
+  display: inline-block;
+  animation: spin .7s linear infinite;
+}
+
 /* ===== Modo Compras ===== */
 .shopping-mode-overlay {
   position: fixed;

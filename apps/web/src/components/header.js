@@ -36,6 +36,7 @@ export function renderHeader({
     <div class="header-row header-row-top">
       <div class="header-user">
         <div class="user-badge" title="Colaborador">👤 ${userName || "—"}</div>
+        <button class="btn small btn-refresh" data-action="refresh-list" title="Atualizar lista" aria-label="Atualizar lista">🔄</button>
         <button class="btn small btn-theme-toggle" data-action="toggle-theme" title="Alternar tema">${themeIcon}</button>
         <button class="btn small btn-export" data-action="export-csv" title="Exportar CSV">📥 CSV</button>
         <button class="btn small btn-export" data-action="export-json" title="Exportar JSON">📥 JSON</button>

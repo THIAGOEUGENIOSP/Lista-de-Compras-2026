@@ -1951,6 +1951,20 @@ function bindDelegatedEvents() {
         return;
       }
 
+      // ── Atualizar lista ──
+      if (action === "refresh-list") {
+        el.classList.add("btn-refreshing");
+        el.disabled = true;
+        try {
+          await loadDataForPeriod();
+          renderApp();
+          toast.show({ title: "✅ Lista atualizada!", message: "", type: "success" });
+        } catch (err) {
+          toastError("Erro ao atualizar", err, "Falha ao recarregar dados");
+        }
+        return;
+      }
+
       // ── Modo Compras ──
       if (action === "open-shopping-mode") {
         state.shoppingMode = true;

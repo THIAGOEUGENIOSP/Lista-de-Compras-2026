@@ -1,0 +1,8 @@
+{
+  "version": 2,
+  "rootDirectory": "apps/web",
+  "cleanUrls": true,
+  "rewrites": [
+    { "source": "/((?!api/).*)", "destination": "/index.html" }
+  ]
+}

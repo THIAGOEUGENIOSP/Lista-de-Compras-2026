@@ -36,7 +36,6 @@ export function renderHeader({
     <div class="header-row header-row-top">
       <div class="header-user">
         <div class="user-badge" title="Colaborador">👤 ${userName || "—"}</div>
-        <button class="btn small btn-refresh" data-action="refresh-list" title="Atualizar lista" aria-label="Atualizar lista">🔄</button>
         <button class="btn small btn-theme-toggle" data-action="toggle-theme" title="Alternar tema">${themeIcon}</button>
         <button class="btn small btn-export" data-action="export-csv" title="Exportar CSV">📥 CSV</button>
         <button class="btn small btn-export" data-action="export-json" title="Exportar JSON">📥 JSON</button>
@@ -51,6 +50,7 @@ export function renderHeader({
         <button class="btn small" data-action="prev-month" title="Mês anterior">◀</button>
         <div class="period-badge" title="Período atual">📅 <span>${periodLabel}</span></div>
         <button class="btn small" data-action="next-month" title="Próximo mês">▶</button>
+        <button class="btn small btn-refresh" data-action="refresh-list" title="Atualizar lista" aria-label="Atualizar lista">🔄</button>
       </div>
       <div class="category-filter">
         <select id="categoryFilter" class="input small" title="Filtrar por categoria">

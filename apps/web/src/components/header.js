@@ -26,12 +26,14 @@ export function renderHeader({
   return `
   <div class="header-card">
 
-    <!-- Linha 1: Brand + ações do usuário -->
+    <!-- Título -->
+    <div class="header-brand">
+      <h1>🛒 LISTA DE COMPRAS</h1>
+      <div class="sub">2026 · Mensal &amp; Analytics</div>
+    </div>
+
+    <!-- Linha 1: ações do usuário -->
     <div class="header-row header-row-top">
-      <div class="header-brand">
-        <h1>🛒 Lista de Compras</h1>
-        <div class="sub">2026 · Mensal &amp; Analytics</div>
-      </div>
       <div class="header-user">
         <div class="user-badge" title="Colaborador">👤 ${userName || "—"}</div>
         <button class="btn small btn-theme-toggle" data-action="toggle-theme" title="Alternar tema">${themeIcon}</button>

@@ -1105,14 +1105,20 @@ table tbody tr:hover {
   flex-wrap: wrap;
 }
 
+.header-brand {
+  width: 100%;
+  margin-bottom: 10px;
+}
 .header-brand h1 {
-  font-size: 18px; font-weight: 900; letter-spacing: -.03em;
+  font-size: 20px; font-weight: 900; letter-spacing: .02em;
+  text-transform: uppercase;
   background: linear-gradient(135deg, var(--text) 0%, var(--muted) 120%);
   -webkit-background-clip: text; -webkit-text-fill-color: transparent;
   background-clip: text;
+  white-space: nowrap;
 }
 .header-brand .sub {
-  font-size: 11px; color: var(--muted); margin-top: 2px; font-weight: 500;
+  font-size: 11px; color: var(--muted); margin-top: 3px; font-weight: 500;
 }
 
 /* Usuário (direita da linha 1) */

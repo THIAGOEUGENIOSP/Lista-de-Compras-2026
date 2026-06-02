@@ -1,0 +1,212 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Preview de Evolução - Lista de Compras</title>
+  <style>
+    :root{
+      --bg:#f4f6fb;
+      --card:#ffffff;
+      --text:#0f172a;
+      --muted:#64748b;
+      --border:#dbe3ef;
+      --green:#22c55e;
+      --amber:#f59e0b;
+      --blue:#38bdf8;
+      --violet:#a78bfa;
+      --danger:#ef4444;
+      --radius:14px;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      font-family: "Segoe UI", Roboto, Arial, sans-serif;
+      background:var(--bg);
+      color:var(--text);
+      padding:20px;
+    }
+    .wrap{max-width:1100px;margin:0 auto;display:grid;gap:14px}
+    .top{
+      background:var(--card);
+      border:1px solid var(--border);
+      border-radius:var(--radius);
+      padding:14px;
+    }
+    h1{margin:0;font-size:22px}
+    .muted{color:var(--muted);font-size:13px}
+    .grid{
+      display:grid;
+      grid-template-columns:repeat(12,minmax(0,1fr));
+      gap:14px;
+    }
+    .card{
+      background:var(--card);
+      border:1px solid var(--border);
+      border-radius:var(--radius);
+      padding:14px;
+    }
+    .span-4{grid-column:span 4}
+    .span-6{grid-column:span 6}
+    .span-8{grid-column:span 8}
+    .span-12{grid-column:span 12}
+    .title{
+      margin:0 0 10px;
+      font-size:16px;
+      font-weight:800;
+    }
+    .pill{
+      display:inline-flex;
+      align-items:center;
+      gap:6px;
+      border:1px solid var(--border);
+      border-radius:999px;
+      padding:5px 9px;
+      font-size:12px;
+      margin-right:6px;
+      margin-bottom:6px;
+    }
+    .k{
+      width:9px;height:9px;border-radius:50%;
+      background:var(--green);
+    }
+    .k.amber{background:var(--amber)}
+    .k.blue{background:var(--blue)}
+    .k.violet{background:var(--violet)}
+    .k.red{background:var(--danger)}
+    .list{display:grid;gap:8px}
+    .line{
+      border:1px solid var(--border);
+      border-left:5px solid var(--green);
+      border-radius:12px;
+      padding:10px;
+      background:linear-gradient(180deg, rgba(34,197,94,.12), #fff 70%);
+      font-size:13px;
+    }
+    .line.amber{
+      border-left-color:var(--amber);
+      background:linear-gradient(180deg, rgba(245,158,11,.12), #fff 70%);
+    }
+    .line.blue{
+      border-left-color:var(--blue);
+      background:linear-gradient(180deg, rgba(56,189,248,.12), #fff 70%);
+    }
+    .line.violet{
+      border-left-color:var(--violet);
+      background:linear-gradient(180deg, rgba(167,139,250,.12), #fff 70%);
+    }
+    .line.red{
+      border-left-color:var(--danger);
+      background:linear-gradient(180deg, rgba(239,68,68,.12), #fff 70%);
+    }
+    .btn{
+      border:1px solid var(--border);
+      border-radius:10px;
+      padding:7px 10px;
+      background:#fff;
+      font-size:12px;
+      cursor:default;
+    }
+    .btn.primary{
+      border-color:rgba(34,197,94,.45);
+      background:rgba(34,197,94,.12);
+    }
+    .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+    .table{
+      width:100%;
+      border-collapse:separate;
+      border-spacing:0 8px;
+      font-size:13px;
+    }
+    .table th{color:var(--muted);text-align:left;padding:0 8px 4px}
+    .table td{
+      background:#fff;
+      border-top:1px solid var(--border);
+      border-bottom:1px solid var(--border);
+      padding:8px;
+    }
+    .table td:first-child{border-left:5px solid var(--green);border-radius:11px 0 0 11px}
+    .table td:last-child{border-right:1px solid var(--border);border-radius:0 11px 11px 0}
+    @media (max-width:900px){
+      .span-4,.span-6,.span-8{grid-column:span 12}
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <section class="top">
+      <h1>Preview de Novas Funcionalidades</h1>
+      <div class="muted">Mock visual para validar a evolução da aplicação antes da implementação completa.</div>
+    </section>
+
+    <section class="grid">
+      <article class="card span-6">
+        <h2 class="title">1) Segurança de ações críticas</h2>
+        <div class="list">
+          <div class="line red">Purge mensal exige permissão de admin no backend (não só PIN no frontend).</div>
+          <div class="line amber">Restore e delete em massa passam por policy RLS.</div>
+          <div class="line blue">Log de auditoria exibido para rastrear quem fez cada ação.</div>
+        </div>
+      </article>
+
+      <article class="card span-6">
+        <h2 class="title">2) Produtividade no cadastro</h2>
+        <div class="row">
+          <span class="pill"><span class="k"></span>Classificação automática</span>
+          <span class="pill"><span class="k amber"></span>Detecção de duplicado</span>
+          <span class="pill"><span class="k blue"></span>Sugestões recorrentes</span>
+        </div>
+        <div style="margin-top:8px" class="muted">Ao abrir "+ Adicionar item", o usuário já vê itens prováveis do mês.</div>
+      </article>
+
+      <article class="card span-8">
+        <h2 class="title">3) Gestão por orçamento</h2>
+        <table class="table" aria-label="Orçamento por categoria">
+          <thead>
+            <tr>
+              <th>Categoria</th>
+              <th>Meta</th>
+              <th>Gasto atual</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Hortifruti</td>
+              <td>R$ 500,00</td>
+              <td>R$ 430,00</td>
+              <td><span class="pill"><span class="k"></span>No limite</span></td>
+            </tr>
+            <tr>
+              <td style="border-left-color:#f59e0b">Padaria e Laticínios</td>
+              <td>R$ 400,00</td>
+              <td>R$ 455,00</td>
+              <td><span class="pill"><span class="k red"></span>Estourou meta</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </article>
+
+      <article class="card span-4">
+        <h2 class="title">4) Fluxo de exclusão seguro</h2>
+        <div class="row" style="margin-bottom:8px">
+          <button class="btn">Mover p/ lixeira</button>
+          <button class="btn primary">Restaurar</button>
+          <button class="btn">Apagar definitivo</button>
+        </div>
+        <div class="muted">Com janela de "Desfazer" para exclusão individual e confirmação forte para massa.</div>
+      </article>
+
+      <article class="card span-12">
+        <h2 class="title">5) Offline e sincronização</h2>
+        <div class="list">
+          <div class="line violet">Modo offline: adiciona/edita itens sem internet.</div>
+          <div class="line">Fila de sincronização quando reconectar.</div>
+          <div class="line amber">Indicador visual de itens pendentes de sync.</div>
+        </div>
+      </article>
+    </section>
+  </div>
+</body>
+</html>
+

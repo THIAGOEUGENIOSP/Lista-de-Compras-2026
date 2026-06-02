@@ -759,18 +759,36 @@ function renderNameGate() {
   });
 }
 
+// Cache de capabilities e correções compartilhadas — válido por 5 minutos
+let _capsCache = null;
+let _capsCacheTs = 0;
+let _sharedCorrectionsCache = null;
+let _sharedCorrectionsCacheTs = 0;
+const CACHE_TTL = 5 * 60 * 1000;
+
 async function loadDataForPeriod() {
   state.currentPeriod = await ensurePeriod(state.cursorDate);
-  const caps = await getItemsCapabilities();
+
+  // Capabilities: re-busca só se cache expirou
+  const now = Date.now();
+  if (!_capsCache || now - _capsCacheTs > CACHE_TTL) {
+    const caps = await getItemsCapabilities();
+    const learningCaps = await getCategoryLearningCapabilities();
+    _capsCache = { caps, learningCaps };
+    _capsCacheTs = now;
+  }
+  const { caps, learningCaps } = _capsCache;
   state.softDeleteEnabled = Boolean(caps.softDelete);
   state.auditLogEnabled = Boolean(caps.auditLog);
-  const learningCaps = await getCategoryLearningCapabilities();
-  state.sharedCategoryLearningEnabled = Boolean(
-    learningCaps.sharedCategoryLearning,
-  );
+  state.sharedCategoryLearningEnabled = Boolean(learningCaps.sharedCategoryLearning);
+
+  // Correções compartilhadas: re-busca só se cache expirou
   if (state.sharedCategoryLearningEnabled) {
-    const sharedMap = await fetchSharedCategoryCorrections(800);
-    setSharedShoppingCategoryCorrections(sharedMap);
+    if (!_sharedCorrectionsCache || now - _sharedCorrectionsCacheTs > CACHE_TTL) {
+      _sharedCorrectionsCache = await fetchSharedCategoryCorrections(800);
+      _sharedCorrectionsCacheTs = now;
+    }
+    setSharedShoppingCategoryCorrections(_sharedCorrectionsCache);
   } else {
     setSharedShoppingCategoryCorrections({});
   }
@@ -901,6 +919,10 @@ function renderTopItemsList(items) {
 }
 
 function renderApp() {
+  // Reseta analyticsLoaded para que o lazy-load funcione após re-renders
+  // (fix: gráficos ficavam vazios após filtrar/ordenar)
+  state.analyticsLoaded = false;
+
   const periodLabel = state.currentPeriod?.nome || periodName(state.cursorDate);
   const userName = state.collaboratorName || "—";
   const filtered = applyFilters();
@@ -976,9 +998,8 @@ function renderApp() {
   }
 
   // Charts
-  if (!state.charts) {
-    state.charts = buildCharts();
-  } else {
+  // Destrói gráficos anteriores para liberar memória (canvas foi re-renderizado)
+  if (state.charts) {
     try {
       state.charts.priceChart?.destroy();
       state.charts.monthlyChartSpent?.destroy();
@@ -986,8 +1007,8 @@ function renderApp() {
       state.charts.statusChart?.destroy();
       state.charts.categoryChart?.destroy();
     } catch {}
-    state.charts = buildCharts();
   }
+  state.charts = null; // será (re)criado quando analytics entrar na viewport
 
   /* Mostra seção de chave local se já houver uma salva */
   const existingKey = getLocalKey();
@@ -1096,6 +1117,10 @@ function setupAnalyticsLazyLoad() {
       entries.forEach((entry) => {
         if (entry.isIntersecting && !state.analyticsLoaded) {
           state.analyticsLoaded = true;
+          // Cria gráficos agora (canvas já está no DOM)
+          if (!state.charts) {
+            state.charts = buildCharts();
+          }
           loadAnalyticsData();
           observer.disconnect();
         }
@@ -1864,6 +1889,8 @@ function bindDelegatedEvents() {
       }
 
       if (action === "prev-month") {
+        if (el.disabled) return;
+        el.disabled = true;
         state.cursorDate = addMonths(state.cursorDate, -1);
         saveCursor();
         await loadDataForPeriod();
@@ -1872,6 +1899,8 @@ function bindDelegatedEvents() {
       }
 
       if (action === "next-month") {
+        if (el.disabled) return;
+        el.disabled = true;
         const nextMonthName = periodName(addMonths(state.cursorDate, +1));
         state.cursorDate = addMonths(state.cursorDate, +1);
         saveCursor();
